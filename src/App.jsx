@@ -484,7 +484,6 @@ export default function App() {
     alert("Có lỗi khi kiểm tra lịch phòng, vui lòng thử lại!");
   }
 };
-  };
 
   // --- XỬ LÝ KHI KHÁCH BẤM NÚT "CHỌN PHÒNG" ---
   const handleSelectRoom = (room) => {
