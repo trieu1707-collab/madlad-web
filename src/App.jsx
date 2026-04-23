@@ -430,6 +430,21 @@ export default function App() {
 
     setSearchSummary({ text: durationText, duration: multiplier });
 
+    const webhookURL = "https://hook.us2.make.com/a6414uz7fvfgjrscn54yyl8cvinaan2u";
+  
+  const bookingData = {
+    type: bookingForm.type,
+    dateIn: bookingForm.dateIn,
+    dateOut: bookingForm.dateOut,
+    timeIn: bookingForm.timeIn,
+    timeOut: bookingForm.timeOut
+  };
+
+  fetch(webhookURL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(bookingData)
+    }).then(res => console.log("Đã gửi dữ liệu mồi!"));
     let results = [];
     ROOM_CATEGORIES.forEach(cat => {
       cat.subRooms.forEach(room => {
