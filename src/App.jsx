@@ -400,38 +400,38 @@ export default function App() {
     return null;
   };
 
-  const handleSearchRooms = (e) => {
-    e.preventDefault();
-    if (getDateWarning()) {
-      alert('Vui lòng kiểm tra lại ngày tháng!'); return;
+  const handleSearchRooms = async (e) => { // Thêm chữ async ở đầu
+  e.preventDefault();
+  if (getDateWarning()) {
+    alert('Vui lòng kiểm tra lại ngày tháng!'); return;
+  }
+
+  let durationHours = 0, durationText = '', multiplier = 1;
+
+  if (bookingForm.type === 'hourly') {
+    const [hIn, mIn] = bookingForm.timeIn.split(':').map(Number);
+    const [hOut, mOut] = bookingForm.timeOut.split(':').map(Number);
+    let diffMinutes = (hOut * 60 + mOut) - (hIn * 60 + mIn);
+    if (diffMinutes <= 0) diffMinutes += 24 * 60;
+    durationHours = Math.max(2, diffMinutes / 60);
+    multiplier = durationHours;
+    durationText = `${durationHours} giờ`;
+  } else {
+    if (!bookingForm.dateIn || !bookingForm.dateOut) {
+      alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!'); return;
     }
+    const dIn = new Date(bookingForm.dateIn);
+    const dOut = new Date(bookingForm.dateOut);
+    const diffTime = Math.abs(dOut - dIn);
+    const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    multiplier = diffDays;
+    durationText = `${diffDays} ${bookingForm.type === 'daily' ? 'ngày' : 'đêm'}`;
+  }
 
-    let durationHours = 0, durationText = '', multiplier = 1;
+  setSearchSummary({ text: durationText, duration: multiplier });
 
-    if (bookingForm.type === 'hourly') {
-      const [hIn, mIn] = bookingForm.timeIn.split(':').map(Number);
-      const [hOut, mOut] = bookingForm.timeOut.split(':').map(Number);
-      let diffMinutes = (hOut * 60 + mOut) - (hIn * 60 + mIn);
-      if (diffMinutes <= 0) diffMinutes += 24 * 60;
-      durationHours = Math.max(2, diffMinutes / 60);
-      multiplier = durationHours;
-      durationText = `${durationHours} giờ`;
-    } else {
-      if (!bookingForm.dateIn || !bookingForm.dateOut) {
-         alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!'); return;
-      }
-      const dIn = new Date(bookingForm.dateIn);
-      const dOut = new Date(bookingForm.dateOut);
-      const diffTime = Math.abs(dOut - dIn);
-      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-      multiplier = diffDays;
-      durationText = `${diffDays} ${bookingForm.type === 'daily' ? 'ngày' : 'đêm'}`;
-    }
-
-    setSearchSummary({ text: durationText, duration: multiplier });
-
-    const webhookURL = "https://hook.us2.make.com/a6414uz7fvfgjrscn54yyl8cvinaan2u";
-  
+  // --- KẾT NỐI MAKE.COM & GOOGLE CALENDAR ---
+  const webhookURL = "https://hook.us2.make.com/a6414uz7fvfgjrscn54yyl8cvinaan2u";
   const bookingData = {
     type: bookingForm.type,
     dateIn: bookingForm.dateIn,
@@ -440,25 +440,50 @@ export default function App() {
     timeOut: bookingForm.timeOut
   };
 
-  fetch(webhookURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(bookingData)
-    }).then(res => console.log("Đã gửi dữ liệu mồi!"));
+  try {
+    // Đợi phản hồi từ Make
+    const response = await fetch(webhookURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bookingData)
+    });
+    
+    const data = await response.json(); // Nhận { available: "true"/"false" }
+
     let results = [];
     ROOM_CATEGORIES.forEach(cat => {
       cat.subRooms.forEach(room => {
         if (room.status === 'Trống') {
-          const parsedBasePrice = parseInt(room.price.replace(/\./g, ''));
-          let basePrice = bookingForm.type === 'hourly' ? Math.round(parsedBasePrice * 0.2) 
-            : bookingForm.type === 'daily' ? parsedBasePrice : parsedBasePrice - 150000;
-          results.push({ ...room, categoryName: cat.name, totalPrice: basePrice * multiplier, calculatedBasePrice: basePrice });
+          // Kiểm tra nếu là phòng Sun thì phải check thêm lịch Google
+          let isActuallyFree = true;
+          if (room.name === "Phòng Sun" && data.available === "false") {
+            isActuallyFree = false;
+          }
+
+          if (isActuallyFree) {
+            const parsedBasePrice = parseInt(room.price.replace(/\./g, ''));
+            let basePrice = bookingForm.type === 'hourly' ? Math.round(parsedBasePrice * 0.2)
+              : bookingForm.type === 'daily' ? parsedBasePrice : parsedBasePrice - 150000;
+            
+            results.push({ 
+              ...room, 
+              categoryName: cat.name, 
+              totalPrice: basePrice * multiplier, 
+              calculatedBasePrice: basePrice 
+            });
+          }
         }
       });
     });
 
     setAvailableRooms(results);
     setBookingView('results');
+
+  } catch (error) {
+    console.error("Lỗi kiểm tra phòng:", error);
+    alert("Có lỗi khi kiểm tra lịch phòng, vui lòng thử lại!");
+  }
+};
   };
 
   // --- XỬ LÝ KHI KHÁCH BẤM NÚT "CHỌN PHÒNG" ---
