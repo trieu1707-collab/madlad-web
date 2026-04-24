@@ -227,38 +227,42 @@ const RULES = [
 // Tạo danh sách giờ cách nhau 30 phút (00:00 -> 23:30) định dạng 24h
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hours24 = Math.floor(i / 2);
-  const h24Str = hours24.toString().padStart(2, '0');
-  const m = i % 2 === 0 ? '00' : '30';
-  
-  return {
-    value: `${h24Str}:${m}`,
-    label: `${h24Str}:${m}`
-  };
-});
+  const data = await response.json(); // Nhận danh sách: { sun: "true", pluto: "false", ... }
 
-// Hàm tạo Passcode từ Ngày Sinh
-const generatePasscode = (dobStr) => {
-  if (!dobStr) return "123456#";
-  const parts = dobStr.split('-');
-  if (parts.length === 3) {
-     const year = parts[0];
-     const month = parts[1];
-     const day = parts[2];
-     const modifiedYear = year[0] + year[2] + year[3]; 
-     return `${day}${month}${modifiedYear}#`;
-  }
-  return "000000#";
-};
+    let results = [];
+    ROOM_CATEGORIES.forEach(cat => {
+      cat.subRooms.forEach(room => {
+        if (room.status === 'Trống') {
+          
+          // 1. Lấy tên ngắn gọn của phòng để khớp với key từ Make
+          // Ví dụ: room.id là "studio-sun" -> lấy chữ "sun"
+          const roomKey = room.id.split('-').pop(); 
 
-// Hàm sinh mã đặt phòng ngẫu nhiên
-const generateBookingCode = () => {
-  return 'MDL' + Math.floor(10000 + Math.random() * 90000);
-}
+          // 2. Kiểm tra trạng thái từ Make trả về
+          // Nếu Make báo phòng này "false" -> isActuallyFree sẽ thành false
+          let isActuallyFree = true;
+          if (data[roomKey] === "false") {
+            isActuallyFree = false;
+          }
 
-export default function App() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  
+          if (isActuallyFree) {
+            const parsedBasePrice = parseInt(room.price.replace(/\./g, ''));
+            let basePrice = bookingForm.type === 'hourly' ? Math.round(parsedBasePrice * 0.2)
+              : bookingForm.type === 'daily' ? parsedBasePrice : parsedBasePrice - 150000;
+            
+            results.push({ 
+              ...room, 
+              categoryName: cat.name, 
+              totalPrice: basePrice * multiplier, 
+              calculatedBasePrice: basePrice 
+            });
+          }
+        }
+      });
+    });
+
+    setAvailableRooms(results);
+    setBookingView('results');
   // --- USER AUTH STATE ---
   const [currentUser, setCurrentUser] = useState(null); // null = chưa đăng nhập
 
@@ -400,7 +404,7 @@ export default function App() {
     return null;
   };
 
-  const handleSearchRooms = async (e) => { // Thêm chữ async ở đầu
+  const handleSearchRooms = async (e) => {
   e.preventDefault();
   if (getDateWarning()) {
     alert('Vui lòng kiểm tra lại ngày tháng!'); return;
