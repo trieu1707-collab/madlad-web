@@ -549,7 +549,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const cartTotalQty = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartTotalPrice = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
-
+}
   return (
     <div className="min-h-screen bg-[#030303] text-zinc-200 font-sans selection:bg-[#D4FF00] selection:text-black overflow-x-hidden relative scroll-smooth">
       <div className="fixed inset-0 z-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none opacity-20"></div>
