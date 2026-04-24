@@ -227,37 +227,13 @@ const RULES = [
 // Tạo danh sách giờ cách nhau 30 phút (00:00 -> 23:30) định dạng 24h
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hours24 = Math.floor(i / 2);
-  const data = await response.json(); // Nhận danh sách: { sun: "true", pluto: "false", ... }
-
-    let results = [];
-    ROOM_CATEGORIES.forEach(cat => {
-      cat.subRooms.forEach(room => {
-        if (room.status === 'Trống') {
-          
-          // 1. Lấy tên ngắn gọn của phòng để khớp với key từ Make
-          // Ví dụ: room.id là "studio-sun" -> lấy chữ "sun"
-          const roomKey = room.id.split('-').pop(); 
-
-          // 2. Kiểm tra trạng thái từ Make trả về
-          // Nếu Make báo phòng này "false" -> isActuallyFree sẽ thành false
-          let isActuallyFree = true;
-          if (data[roomKey] === "false") {
-            isActuallyFree = false;
-          }
-
-          if (isActuallyFree) {
-            const parsedBasePrice = parseInt(room.price.replace(/\./g, ''));
-            let basePrice = bookingForm.type === 'hourly' ? Math.round(parsedBasePrice * 0.2)
-              : bookingForm.type === 'daily' ? parsedBasePrice : parsedBasePrice - 150000;
-            
-            results.push({ 
-              ...room, 
-              categoryName: cat.name, 
-              totalPrice: basePrice * multiplier, 
-              calculatedBasePrice: basePrice 
-            });
-          }
-        }
+ // Dòng 228 sửa lại thành:
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const hours24 = Math.floor(i / 2);
+  const h24Str = hours24.toString().padStart(2, '0');
+  const m = i % 2 === 0 ? '00' : '30';
+  return { value: `${h24Str}:${m}`, label: `${h24Str}:${m}` };
+});
       });
     });
 
@@ -444,6 +420,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
     timeOut: bookingForm.timeOut
   };
 
+ // Dòng 423
   try {
     // Đợi phản hồi từ Make
     const response = await fetch(webhookURL, {
@@ -452,15 +429,17 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
       body: JSON.stringify(bookingData)
     });
     
-    const data = await response.json(); // Nhận { available: "true"/"false" }
+    // --- ĐOẠN DÁN MỚI BẮT ĐẦU TỪ ĐÂY ---
+    const data = await response.json(); 
 
     let results = [];
     ROOM_CATEGORIES.forEach(cat => {
       cat.subRooms.forEach(room => {
         if (room.status === 'Trống') {
-          // Kiểm tra nếu là phòng Sun thì phải check thêm lịch Google
+          const roomKey = room.id.split('-').pop(); 
           let isActuallyFree = true;
-          if (room.name === "Phòng Sun" && data.available === "false") {
+
+          if (data[roomKey] === "false") {
             isActuallyFree = false;
           }
 
@@ -479,6 +458,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
         }
       });
     });
+    // --- ĐOẠN DÁN MỚI KẾT THÚC TẠI ĐÂY ---
 
     setAvailableRooms(results);
     setBookingView('results');
@@ -486,6 +466,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   } catch (error) {
     console.error("Lỗi kiểm tra phòng:", error);
     alert("Có lỗi khi kiểm tra lịch phòng, vui lòng thử lại!");
+  }
   }
 };
 
