@@ -481,24 +481,48 @@ export default function App() {
     setBookingView('payment');
   };
 
-  const handlePaymentComplete = () => {
+  const handlePaymentComplete = async () => {
+    // 1. Tạo mã đặt phòng và thông tin cần gửi
     const code = generateBookingCode();
+    const passcode = generatePasscode(guestInfo.dob);
+    
     const newBooking = {
       code: code,
-      passcode: generatePasscode(guestInfo.dob),
+      passcode: passcode,
       name: guestInfo.name,
+      phone: guestInfo.phone, // Lấy thêm SĐT để ghi chú lên lịch
+      email: guestInfo.email,
       roomName: selectedBookingRoom.name,
       categoryName: selectedBookingRoom.categoryName,
       dateIn: bookingForm.dateIn,
       timeIn: bookingForm.timeIn,
       dateOut: bookingForm.type === 'hourly' ? bookingForm.dateIn : bookingForm.dateOut,
       timeOut: bookingForm.timeOut,
-      type: bookingForm.type
+      type: bookingForm.type,
+      totalPrice: selectedBookingRoom.totalPrice, // Lấy số tiền để quản lý
+      timestamp: new Date().toISOString()
     };
 
-    setFinalBookingData(newBooking);
-    setBookingsDb(prev => [...prev, newBooking]); // Lưu vào Database mô phỏng
-    setBookingView('success');
+    // 2. Gửi Webhook sang Make.com để chốt lịch
+    // BẠN SẼ THAY ĐƯỜNG LINK NÀY BẰNG LINK WEBHOOK MỚI TRÊN MAKE.COM NHÉ
+    const webhookChotLichURL = "https://hook.us2.make.com/a1u9ity96hic73e24bzg5fy3i652b7r8";
+
+    try {
+      await fetch(webhookChotLichURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBooking)
+      });
+      
+      // 3. Cập nhật trạng thái hiển thị thành công (chỉ chạy khi gửi webhook thành công)
+      setFinalBookingData(newBooking);
+      setBookingsDb(prev => [...prev, newBooking]);
+      setBookingView('success');
+      
+    } catch (error) {
+      console.error("Lỗi khi chốt lịch:", error);
+      alert("Hệ thống ghi nhận thanh toán nhưng gặp lỗi khi chốt lịch. Vui lòng liên hệ Madlad Space qua Zalo!");
+    }
   };
 
   const handleSearchBooking = (e) => {
