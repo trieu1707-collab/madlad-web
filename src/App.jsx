@@ -235,7 +235,8 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 // --- ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT ĐỂ MỞ HÀM APP ---
 export default function App() {
 
-  // --- USER AUTH STATE ---
+  const [scrolled, setScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null); // null = chưa đăng nhập
 
   // --- DATABASE MÔ PHỎNG (Lưu mã đặt phòng) ---
