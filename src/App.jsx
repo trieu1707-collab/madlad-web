@@ -227,18 +227,10 @@ const RULES = [
 // Tạo danh sách giờ cách nhau 30 phút (00:00 -> 23:30) định dạng 24h
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hours24 = Math.floor(i / 2);
- // Dòng 228 sửa lại thành:
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const hours24 = Math.floor(i / 2);
   const h24Str = hours24.toString().padStart(2, '0');
   const m = i % 2 === 0 ? '00' : '30';
   return { value: `${h24Str}:${m}`, label: `${h24Str}:${m}` };
 });
-      });
-    });
-
-    setAvailableRooms(results);
-    setBookingView('results');
   // --- USER AUTH STATE ---
   const [currentUser, setCurrentUser] = useState(null); // null = chưa đăng nhập
 
@@ -468,7 +460,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
     alert("Có lỗi khi kiểm tra lịch phòng, vui lòng thử lại!");
   }
   }
-};
+
 
   // --- XỬ LÝ KHI KHÁCH BẤM NÚT "CHỌN PHÒNG" ---
   const handleSelectRoom = (room) => {
