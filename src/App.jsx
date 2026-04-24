@@ -459,7 +459,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
     console.error("Lỗi kiểm tra phòng:", error);
     alert("Có lỗi khi kiểm tra lịch phòng, vui lòng thử lại!");
   }
-  }
+  };
 
 
   // --- XỬ LÝ KHI KHÁCH BẤM NÚT "CHỌN PHÒNG" ---
@@ -1538,4 +1538,3 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
     </div>
   );
-}
