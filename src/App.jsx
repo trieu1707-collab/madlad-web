@@ -231,6 +231,21 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const m = i % 2 === 0 ? '00' : '30';
   return { value: `${h24Str}:${m}`, label: `${h24Str}:${m}` };
 });
+// --- CÁC HÀM TẠO MÃ TỰ ĐỘNG ---
+const generateBookingCode = () => {
+  // Tạo mã ngẫu nhiên dạng MDL + 5 số (VD: MDL82736)
+  return 'MDL' + Math.floor(10000 + Math.random() * 90000).toString();
+};
+
+const generatePasscode = (dob) => {
+  // Lấy ngày tháng sinh làm mật khẩu cửa (VD: Sinh 25/10/2000 -> Pass: 2510)
+  if (!dob) return Math.floor(1000 + Math.random() * 9000).toString();
+  const parts = dob.split('-'); 
+  if (parts.length === 3) {
+    return parts[2] + parts[1]; // DDMM
+  }
+  return Math.floor(1000 + Math.random() * 9000).toString();
+};
 
 // --- ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT ĐỂ MỞ HÀM APP ---
 export default function App() {
