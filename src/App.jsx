@@ -1538,5 +1538,5 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
     </div>
   );
-}
+
   export default App;
