@@ -231,13 +231,15 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const m = i % 2 === 0 ? '00' : '30';
   return { value: `${h24Str}:${m}`, label: `${h24Str}:${m}` };
 });
+
+// --- ĐÂY LÀ DÒNG QUAN TRỌNG NHẤT ĐỂ MỞ HÀM APP ---
+export default function App() {
+
   // --- USER AUTH STATE ---
   const [currentUser, setCurrentUser] = useState(null); // null = chưa đăng nhập
 
   // --- DATABASE MÔ PHỎNG (Lưu mã đặt phòng) ---
   const [bookingsDb, setBookingsDb] = useState([]);
-
-  // Modals State
   const [authState, setAuthState] = useState({ isOpen: false, view: 'login' });
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -553,6 +555,7 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   return (
     <div className="min-h-screen bg-[#030303] text-zinc-200 font-sans selection:bg-[#D4FF00] selection:text-black overflow-x-hidden relative scroll-smooth">
       <div className="fixed inset-0 z-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none opacity-20"></div>
+
 
       {/* --- NAVIGATION --- */}
       <nav className={`fixed w-full z-50 transition-all duration-500 ${scrolled ? 'bg-white/[0.02] backdrop-blur-xl border-b border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] py-4' : 'bg-transparent py-6'}`}>
@@ -1538,5 +1541,4 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
     </div>
   );
-
-  export default App;
+}
