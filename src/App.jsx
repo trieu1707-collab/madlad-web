@@ -13,15 +13,17 @@ import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged }
 import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 // ============================================================================
-// 🏦 CẤU HÌNH TÀI KHOẢN NGÂN HÀNG (SEPAY / VIETQR)
-// Hướng dẫn: Sửa lại Tên viết tắt ngân hàng và Số tài khoản của bạn vào đây
-// Tên ngân hàng hợp lệ: MBBank, Vietcombank, Techcombank, ACB, TPBank, VIB...
+// 🏦 CẤU HÌNH TÀI KHOẢN NGÂN HÀNG (VIETQR / SEPAY)
+// Quan trọng: Sử dụng TÊN VIẾT TẮT chuẩn của ngân hàng.
+// Ví dụ: MB, VCB, TCB, ACB, TPB, VIB, VPB, STB, BIDV...
 // ============================================================================
-const ROOM_BANK_NAME = 'Vietinbank'; // Ngân hàng nhận tiền ĐẶT PHÒNG
+const ROOM_BANK_NAME = 'VietinBank'; // Ngân hàng nhận tiền ĐẶT PHÒNG
 const ROOM_BANK_ACC = '106003101665'; // Số tài khoản nhận tiền ĐẶT PHÒNG
+const ROOM_BANK_OWNER = 'NGUYEN THI MINH CHI'; // Tên chủ tài khoản (Viết HOA không dấu)
 
 const FOOD_BANK_NAME = 'BIDV'; // Ngân hàng nhận tiền ĐỒ ĂN
 const FOOD_BANK_ACC = '8858095547'; // Số tài khoản nhận tiền ĐỒ ĂN
+const FOOD_BANK_OWNER = 'HO KINH DOANH MAD STATION'; // Tên chủ tài khoản (Viết HOA không dấu)
 // ============================================================================
 
 // --- KHỞI TẠO CLOUD DATABASE ---
@@ -1142,7 +1144,11 @@ export default function App() {
                   <span className="text-sm font-bold uppercase tracking-widest text-[#D4FF00]">Thanh toán tự động</span>
                 </div>
                 <div className="bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(212,255,0,0.15)] mb-8 relative">
-                  <img src={`https://qr.sepay.vn/img?bank=${FOOD_BANK_NAME}&acc=${FOOD_BANK_ACC}&amount=${cartTotalPrice}&des=${pendingFoodOrderId}`} alt="QR Code Đồ Ăn" className="w-56 h-56 mix-blend-multiply" />
+                  <img 
+                    src={`https://img.vietqr.io/image/${FOOD_BANK_NAME}-${FOOD_BANK_ACC}-qr_only.png?amount=${cartTotalPrice}&addInfo=${encodeURIComponent(pendingFoodOrderId)}&accountName=${encodeURIComponent(FOOD_BANK_OWNER)}`} 
+                    alt="QR Code Đồ Ăn" 
+                    className="w-56 h-56 mix-blend-multiply object-contain" 
+                  />
                   <div className="absolute inset-0 border-4 border-[#D4FF00]/50 rounded-3xl animate-pulse pointer-events-none"></div>
                 </div>
                 <h4 className="text-3xl font-serif italic text-white mb-3">{formatPrice(cartTotalPrice)}</h4>
@@ -1445,9 +1451,9 @@ export default function App() {
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(212,255,0,0.15)] mb-6 relative">
                   <img 
-                    src={`https://qr.sepay.vn/img?bank=${ROOM_BANK_NAME}&acc=${ROOM_BANK_ACC}&amount=${selectedBookingRoom?.totalPrice}&des=${pendingBookingCode}`} 
+                    src={`https://img.vietqr.io/image/${ROOM_BANK_NAME}-${ROOM_BANK_ACC}-qr_only.png?amount=${selectedBookingRoom?.totalPrice}&addInfo=${encodeURIComponent(pendingBookingCode)}&accountName=${encodeURIComponent(ROOM_BANK_OWNER)}`} 
                     alt="QR Code Thanh Toán" 
-                    className="w-48 h-48 mix-blend-multiply" 
+                    className="w-48 h-48 mix-blend-multiply object-contain" 
                   />
                   {/* Hiệu ứng loading quét mã */}
                   <div className="absolute inset-0 border-4 border-[#D4FF00]/50 rounded-2xl animate-pulse pointer-events-none"></div>
