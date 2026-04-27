@@ -12,6 +12,18 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
+// ============================================================================
+// 🏦 CẤU HÌNH TÀI KHOẢN NGÂN HÀNG (SEPAY / VIETQR)
+// Hướng dẫn: Sửa lại Tên viết tắt ngân hàng và Số tài khoản của bạn vào đây
+// Tên ngân hàng hợp lệ: MBBank, Vietcombank, Techcombank, ACB, TPBank, VIB...
+// ============================================================================
+const ROOM_BANK_NAME = 'Vietinbank'; // Ngân hàng nhận tiền ĐẶT PHÒNG
+const ROOM_BANK_ACC = '106003101665'; // Số tài khoản nhận tiền ĐẶT PHÒNG
+
+const FOOD_BANK_NAME = 'BIDV'; // Ngân hàng nhận tiền ĐỒ ĂN
+const FOOD_BANK_ACC = '8858095547'; // Số tài khoản nhận tiền ĐỒ ĂN
+// ============================================================================
+
 // --- KHỞI TẠO CLOUD DATABASE ---
 let db, auth, appId;
 try {
@@ -310,6 +322,10 @@ export default function App() {
   const [selectedBookingRoom, setSelectedBookingRoom] = useState(null);
   const [guestInfo, setGuestInfo] = useState({ name: '', dob: '', phone: '', cccdImage: null });
   const [finalBookingData, setFinalBookingData] = useState(null);
+  
+  // Trạng thái giữ mã Đặt phòng tạm thời trước khi thanh toán
+  const [pendingBookingCode, setPendingBookingCode] = useState('');
+  const [pendingFoodOrderId, setPendingFoodOrderId] = useState(''); // Thêm state cho Đồ ăn
 
   const [searchCode, setSearchCode] = useState('');
   const [searchResult, setSearchResult] = useState(null);
@@ -462,9 +478,45 @@ export default function App() {
       setBookingView('form');
       setSelectedBookingRoom(null);
       setFinalBookingData(null);
+      setPendingBookingCode('');
       if (!currentUser) setGuestInfo({ name: '', dob: '', phone: '', cccdImage: null });
     }
   }, [bookingModalOpen, currentUser]);
+
+  // =====================================================================
+  // ⚡ LẮNG NGHE THANH TOÁN TỰ ĐỘNG (REAL-TIME LISTENER)
+  // =====================================================================
+  
+  // 1. Lắng nghe Đặt Phòng
+  useEffect(() => {
+    if (bookingView === 'payment' && pendingBookingCode && db) {
+      const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', pendingBookingCode), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().status === 'success') {
+          setFinalBookingData(docSnap.data());
+          setBookingView('success');
+        }
+      });
+      return () => unsub(); // Dọn dẹp listener khi rời trang
+    }
+  }, [bookingView, pendingBookingCode, db]);
+
+  // 2. Lắng nghe Đặt Đồ Ăn
+  useEffect(() => {
+    if (cartView === 'payment' && pendingFoodOrderId && db) {
+      const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', pendingFoodOrderId), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().status === 'success') {
+          alert('✅ Thanh toán đồ ăn tự động thành công! Mình chờ một lát, nhân viên sẽ mang lên tận phòng ạ.');
+          setCart([]);
+          setIsCartOpen(false);
+          setCartView('cart');
+          setSelectedFoodRoom('');
+          setPendingFoodOrderId('');
+        }
+      });
+      return () => unsub();
+    }
+  }, [cartView, pendingFoodOrderId, db]);
+  // =====================================================================
 
   useEffect(() => {
     if (authState.isOpen || isCartOpen || selectedCategory || viewingRoom || bookingModalOpen || searchModalOpen || isFoodMenuOpen || isAdminModalOpen) {
@@ -604,28 +656,9 @@ export default function App() {
     setBookingView('results');
   };
 
-  const handleSelectRoom = (room) => {
-    setSelectedBookingRoom(room);
-    if (currentUser) {
-      setGuestInfo(currentUser); 
-      setBookingView('payment'); 
-    } else {
-      setBookingView('guest_info'); 
-    }
-  };
-
-  const handleGuestSubmit = (e) => {
-    e.preventDefault();
-    if (!guestInfo.cccdImage) {
-      alert("Vui lòng tải lên hình ảnh CCCD mặt trước để hoàn tất hồ sơ lưu trú.");
-      return;
-    }
-    setBookingView('payment');
-  };
-
-  const handlePaymentComplete = async () => {
-    const code = generateBookingCode();
-    const passcode = generatePasscode(guestInfo.dob);
+  // Hàm tạo dữ liệu chờ trên Firebase (Dùng chung cho Đặt phòng)
+  const createPendingDoc = async (code, guest, room) => {
+    const passcode = generatePasscode(guest.dob);
     const dateOutVal = bookingForm.type === 'hourly' ? bookingForm.dateIn : bookingForm.dateOut;
     const isoEnd = `${dateOutVal}T${bookingForm.timeOut}:00+07:00`;
     
@@ -633,10 +666,10 @@ export default function App() {
       code: code,
       passcode: passcode,
       accountId: currentUser ? currentUser.username : 'guest',
-      guestData: { ...guestInfo },
-      roomName: selectedBookingRoom.name,
-      categoryName: selectedBookingRoom.categoryName,
-      roomKey: selectedBookingRoom.id.split('-').pop().toLowerCase(),
+      guestData: { ...guest },
+      roomName: room.name,
+      categoryName: room.categoryName,
+      roomKey: room.id.split('-').pop().toLowerCase(),
       dateIn: bookingForm.dateIn,
       timeIn: bookingForm.timeIn,
       dateOut: dateOutVal,
@@ -646,29 +679,58 @@ export default function App() {
       isoStart: `${bookingForm.dateIn}T${bookingForm.timeIn}:00+07:00`,
       isoEnd: isoEnd,
       type: bookingForm.type,
-      totalPrice: selectedBookingRoom.totalPrice,
-      timestamp: new Date().toISOString()
+      totalPrice: room.totalPrice,
+      timestamp: new Date().toISOString(),
+      status: 'pending' // <--- Trạng thái chờ thanh toán tự động
     };
 
     try {
-      if (!db || !fbUser) throw new Error("Hệ thống đám mây chưa sẵn sàng");
+      if (!db) throw new Error("Cloud DB not ready");
       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', code), newBooking);
-      setFinalBookingData(newBooking);
-      setBookingView('success');
-    } catch (error) {
-      alert("Hệ thống lưu trữ Đám mây gặp lỗi. Lỗi: " + error.message);
+      setFinalBookingData(newBooking); 
+    } catch (err) { console.error("Lỗi tạo vé tạm:", err); }
+  };
+
+  const handleSelectRoom = async (room) => {
+    setSelectedBookingRoom(room);
+    
+    const newCode = generateBookingCode();
+    setPendingBookingCode(newCode);
+
+    if (currentUser) {
+      setGuestInfo(currentUser); 
+      await createPendingDoc(newCode, currentUser, room);
+      setBookingView('payment'); 
+    } else {
+      setBookingView('guest_info'); 
+    }
+  };
+
+  const handleGuestSubmit = async (e) => {
+    e.preventDefault();
+    if (!guestInfo.cccdImage) {
+      alert("Vui lòng tải lên hình ảnh CCCD mặt trước để hoàn tất hồ sơ lưu trú.");
       return;
     }
+    await createPendingDoc(pendingBookingCode, guestInfo, selectedBookingRoom);
+    setBookingView('payment');
+  };
 
-    const webhookChotLichURL = "https://hook.us2.make.com/a1u9ity96hic73e24bzg5fy3i652b7r8";
+  // Nút xác nhận thủ công (Dự phòng khi Make.com/SePay lỗi)
+  const handlePaymentComplete = async () => {
     try {
+      // 1. Cập nhật Firebase thành success
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', pendingBookingCode), { status: 'success' });
+      
+      // 2. Kích hoạt Webhook Make.com chốt lịch (như cũ)
+      const webhookChotLichURL = "https://hook.us2.make.com/a1u9ity96hic73e24bzg5fy3i652b7r8";
       await fetch(webhookChotLichURL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newBooking)
+        body: JSON.stringify({...finalBookingData, status: 'success'})
       });
     } catch (error) {
-      console.error("Lỗi báo Make.com:", error);
+      console.error("Lỗi xác nhận thủ công:", error);
     }
   };
 
@@ -727,19 +789,37 @@ export default function App() {
   const cartTotalPrice = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
 
-  const handleFoodOrderSubmit = (e) => {
+  const handleFoodOrderSubmit = async (e) => {
     e.preventDefault(); 
     const formData = new FormData(e.target);
     const room = formData.get('room');
     setSelectedFoodRoom(room);
 
     if (foodPaymentMethod === 'transfer') {
+      const newOrderId = 'FD' + Date.now();
+      setPendingFoodOrderId(newOrderId);
+      
+      const orderData = {
+        id: newOrderId,
+        roomName: room,
+        items: cart.map(item => `${item.name} (x${item.qty})`).join(', '),
+        totalPrice: cartTotalPrice,
+        paymentMethod: 'Chuyển khoản',
+        timestamp: new Date().toLocaleString('vi-VN'),
+        status: 'pending' // Chờ tự động
+      };
+
+      try {
+        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', newOrderId), orderData);
+      } catch(err) { console.error(err); }
+
       setCartView('payment');
     } else {
       finalizeFoodOrder('Tiền mặt', room);
     }
   };
 
+  // Gọi webhook và hoàn tất cho Đồ ăn (Dùng cho Tiền mặt hoặc Nút Thủ công)
   const finalizeFoodOrder = async (method, roomNameParam = selectedFoodRoom) => {
     const orderData = {
       roomName: roomNameParam,
@@ -760,13 +840,19 @@ export default function App() {
       console.error("Lỗi gửi đơn đồ ăn:", error);
     }
 
-    alert('Mình chờ home 1 tí, home sẽ để trước cửa rồi gõ cửa ạ');
-    setCart([]);
-    setIsCartOpen(false);
-    setCartView('cart');
-    setSelectedFoodRoom('');
+    if(method === 'Tiền mặt') {
+       alert('Mình chờ home 1 tí, home sẽ để trước cửa rồi gõ cửa ạ');
+       setCart([]);
+       setIsCartOpen(false);
+       setCartView('cart');
+       setSelectedFoodRoom('');
+    } else {
+       // Cập nhật Firebase để tự động nhảy UI nếu bấm nút thủ công
+       if(pendingFoodOrderId) {
+         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', pendingFoodOrderId), { status: 'success' });
+       }
+    }
   };
-
 
   return (
     <div className="min-h-screen bg-[#030303] text-zinc-200 font-sans selection:bg-[#D4FF00] selection:text-black overflow-x-hidden relative scroll-smooth">
@@ -1053,15 +1139,19 @@ export default function App() {
             ) : (
               <div className="flex-1 overflow-y-auto p-8 flex flex-col items-center justify-center text-center">
                 <div className="w-full flex items-center justify-center mb-8 shrink-0">
-                  <span className="text-sm font-bold uppercase tracking-widest text-[#D4FF00]">Thanh toán đơn hàng</span>
+                  <span className="text-sm font-bold uppercase tracking-widest text-[#D4FF00]">Thanh toán tự động</span>
                 </div>
-                <div className="bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(212,255,0,0.15)] mb-8">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=madlad_food_pay_${cartTotalPrice}&color=000000`} alt="QR Code" className="w-56 h-56 mix-blend-multiply" />
+                <div className="bg-white p-4 rounded-3xl shadow-[0_0_40px_rgba(212,255,0,0.15)] mb-8 relative">
+                  <img src={`https://qr.sepay.vn/img?bank=${FOOD_BANK_NAME}&acc=${FOOD_BANK_ACC}&amount=${cartTotalPrice}&des=${pendingFoodOrderId}`} alt="QR Code Đồ Ăn" className="w-56 h-56 mix-blend-multiply" />
+                  <div className="absolute inset-0 border-4 border-[#D4FF00]/50 rounded-3xl animate-pulse pointer-events-none"></div>
                 </div>
                 <h4 className="text-3xl font-serif italic text-white mb-3">{formatPrice(cartTotalPrice)}</h4>
-                <p className="text-sm font-light text-zinc-400 mb-10">Vui lòng quét mã QR để thanh toán tiền đồ ăn cho phòng <strong className="text-white">{selectedFoodRoom}</strong>.</p>
-                <button onClick={() => finalizeFoodOrder('Chuyển khoản')} className="w-full bg-white text-black font-bold uppercase tracking-[0.2em] text-xs py-5 rounded-xl hover:bg-[#D4FF00] transition-all flex justify-center items-center gap-3">
-                  Tôi đã chuyển khoản xong <CheckCircle size={16} />
+                <p className="text-[11px] text-zinc-400 mb-4 px-4 leading-relaxed">Vui lòng quét mã QR để thanh toán tiền đồ ăn cho phòng <strong className="text-white">{selectedFoodRoom}</strong>.</p>
+                <p className="text-[10px] font-bold text-[#D4FF00] mb-8 text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-2">
+                  <Clock size={14} /> Đang chờ ngân hàng xác nhận...
+                </p>
+                <button onClick={() => finalizeFoodOrder('Chuyển khoản')} className="text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white underline underline-offset-4 decoration-white/20 transition-all">
+                  Chờ quá lâu? Bấm xác nhận thủ công
                 </button>
               </div>
             )}
@@ -1350,16 +1440,26 @@ export default function App() {
               <div className="p-8 pt-4 overflow-y-auto custom-scrollbar flex flex-col items-center">
                 <div className="w-full flex items-center justify-between mb-6 border-b border-white/10 pb-4 shrink-0">
                   <button onClick={() => setBookingView(currentUser ? 'results' : 'guest_info')} className="text-zinc-400 hover:text-[#D4FF00] transition-colors p-1"><ArrowLeft size={20}/></button>
-                  <span className="text-sm font-bold uppercase tracking-widest text-[#D4FF00]">Thanh toán an toàn</span>
+                  <span className="text-sm font-bold uppercase tracking-widest text-[#D4FF00]">Thanh toán tự động</span>
                   <div className="w-6"></div>
                 </div>
-                <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(212,255,0,0.15)] mb-6">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=madlad_pay_${selectedBookingRoom?.totalPrice}&color=000000`} alt="QR Code" className="w-48 h-48 mix-blend-multiply" />
+                <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(212,255,0,0.15)] mb-6 relative">
+                  <img 
+                    src={`https://qr.sepay.vn/img?bank=${ROOM_BANK_NAME}&acc=${ROOM_BANK_ACC}&amount=${selectedBookingRoom?.totalPrice}&des=${pendingBookingCode}`} 
+                    alt="QR Code Thanh Toán" 
+                    className="w-48 h-48 mix-blend-multiply" 
+                  />
+                  {/* Hiệu ứng loading quét mã */}
+                  <div className="absolute inset-0 border-4 border-[#D4FF00]/50 rounded-2xl animate-pulse pointer-events-none"></div>
                 </div>
                 <h4 className="text-2xl font-serif italic text-white mb-2">{formatPrice(selectedBookingRoom?.totalPrice || 0)}</h4>
-                <p className="text-xs font-light text-zinc-400 mb-8 text-center">Quét mã QR để thanh toán cho phòng <strong className="text-white">{selectedBookingRoom?.name}</strong>.</p>
-                <button onClick={handlePaymentComplete} className="w-full bg-white text-black font-bold uppercase tracking-[0.2em] text-xs py-5 rounded-xl hover:bg-[#D4FF00] transition-all flex justify-center items-center gap-3">
-                  Tôi đã chuyển khoản xong <CheckCircle size={16} />
+                <p className="text-xs font-light text-zinc-400 mb-2 text-center">Mở App ngân hàng, quét mã QR và xác nhận chuyển khoản.</p>
+                <p className="text-[10px] font-bold text-[#D4FF00] mb-8 text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-2">
+                  <Clock size={14} /> Hệ thống đang chờ nhận tiền...
+                </p>
+                
+                <button onClick={handlePaymentComplete} className="text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white underline underline-offset-4 decoration-white/20 transition-all">
+                  Chờ quá lâu? Bấm xác nhận thủ công
                 </button>
               </div>
             )}
