@@ -347,8 +347,7 @@ export default function App() {
 
   // --- ANIMATION STATE & REFS ---
   const heroSectionRef = useRef(null);
-  const [heroTextClass, setHeroTextClass] = useState('opacity-0');
-  const [heroCareTextClass, setHeroCareTextClass] = useState('opacity-0');
+  const [isHeroLoaded, setIsHeroLoaded] = useState(false);
   const [showLiquidBg, setShowLiquidBg] = useState(true);
 
   // Biến hợp nhất fallback DB rỗng
@@ -431,8 +430,7 @@ export default function App() {
   // --- 3. HIỆU ỨNG ANIMATION HERO ---
   useEffect(() => {
     setTimeout(() => {
-      setHeroCareTextClass('opacity-100 transition-all duration-1000 ease-out translate-y-0'); 
-      setHeroTextClass('opacity-100 blur-0 transition-all duration-1000 ease-out translate-y-0');
+      setIsHeroLoaded(true);
     }, 300);
 
     const handleScroll = () => {
@@ -849,21 +847,21 @@ export default function App() {
         
         <div className="text-center max-w-5xl mx-auto flex flex-col items-center relative z-20 w-full mt-[-5vh]">
           
-          <div className={`mb-6 flex items-center gap-4 ${heroCareTextClass} translate-y-10 transition-transform`}>
+          <div className={`mb-6 flex items-center gap-4 transition-all duration-1000 ease-out ${isHeroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className="h-px w-8 bg-[#D4FF00]"></div>
             <span className="text-[10px] font-bold text-[#D4FF00] uppercase tracking-[0.6em] drop-shadow-[0_2px_10px_rgba(212,255,0,0.4)]">MADLAD SPACE</span>
             <div className="h-px w-8 bg-[#D4FF00]"></div>
           </div>
 
-          <div className={`${heroTextClass} translate-y-10 blur-[10px] transition-transform`}>
-            <h1 className="text-6xl md:text-8xl lg:text-9xl tracking-tighter flex flex-col items-center leading-[0.9] mb-1">
-              <span className="font-black text-white uppercase drop-shadow-2xl">IT'S GOOD,</span>
-              <span className="font-serif italic text-zinc-500 font-light lowercase text-5xl md:text-7xl lg:text-8xl -mt-2 md:-mt-4">because we care</span>
+          <div className={`transition-all duration-1000 ease-out delay-100 ${isHeroLoaded ? 'opacity-100 blur-0 translate-y-0' : 'opacity-0 blur-[15px] translate-y-10'}`}>
+            <h1 className="flex flex-col items-center leading-[0.85] mb-4">
+              <span className="text-6xl sm:text-7xl md:text-8xl lg:text-[9rem] font-black text-white uppercase drop-shadow-2xl tracking-tighter">IT'S GOOD,</span>
+              <span className="text-5xl sm:text-6xl md:text-7xl lg:text-[7.5rem] font-serif italic text-zinc-400 font-light lowercase -mt-1 md:-mt-5">because we care</span>
             </h1>
           </div>
 
-          <button onClick={() => document.getElementById('rooms')?.scrollIntoView({behavior: 'smooth'})} className="mt-16 group relative flex items-center gap-4 text-white hover:text-[#D4FF00] transition-colors duration-500 animate-slide-up-fade [animation-delay:1s]">
-            <span className="text-xs font-bold uppercase tracking-[0.2em]">Khám phá không gian</span>
+          <button onClick={() => document.getElementById('rooms')?.scrollIntoView({behavior: 'smooth'})} className={`mt-16 group relative flex items-center gap-4 text-white hover:text-[#D4FF00] transition-all duration-700 ease-out delay-300 ${isHeroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]">Khám phá không gian</span>
             <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center group-hover:border-[#D4FF00] group-hover:bg-[#D4FF00]/10 transition-all duration-500">
               <ChevronRight size={16} strokeWidth={1.5} className="group-hover:translate-x-1 transition-transform" />
             </div>
