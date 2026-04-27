@@ -17,12 +17,12 @@ let db, auth, appId;
 try {
   // ⚠️ DÀNH CHO MÔI TRƯỜNG LOCAL (VS CODE CỦA BẠN):
   const LOCAL_FIREBASE_CONFIG = {
-    apiKey: "ĐIỀN_API_KEY_CỦA_BẠN_VÀO_ĐÂY",
-    authDomain: "ĐIỀN_AUTH_DOMAIN_CỦA_BẠN_VÀO_ĐÂY",
-    projectId: "ĐIỀN_PROJECT_ID_CỦA_BẠN_VÀO_ĐÂY",
-    storageBucket: "ĐIỀN_STORAGE_BUCKET_CỦA_BẠN_VÀO_ĐÂY",
-    messagingSenderId: "ĐIỀN_MESSAGING_SENDER_ID_VÀO_ĐÂY",
-    appId: "ĐIỀN_APP_ID_CỦA_BẠN_VÀO_ĐÂY"
+    apiKey: "AIzaSyBsYRhkHpybjB822e9viDxS_gFb-YQedow",
+    authDomain: "madlad-space.firebaseapp.com",
+    projectId: "madlad-space",
+    storageBucket: "madlad-space.firebasestorage.app",
+    messagingSenderId: "826338141212",
+    appId: "1:826338141212:web:a72fec438e972178792bd9"
   };
 
   const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
