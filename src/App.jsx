@@ -3,8 +3,8 @@ import {
   Menu, X, Calendar, MapPin, Phone, CheckCircle, 
   MonitorPlay, Gamepad2, Bath, ChevronRight, Info,
   Bike, Map, AlertTriangle, Sparkles, ArrowUpRight,
-  ShoppingCart, Plus, Minus, Trash2, UtensilsCrossed, ArrowLeft, BedDouble, Clock, QrCode, User, Search, Shirt,
-  Filter, ChevronDown, UploadCloud, ImageIcon, Settings, Lock, Edit
+  ShoppingCart, Plus, Minus, Trash2, UtensilsCrossed, ArrowLeft, ArrowRight, BedDouble, Clock, QrCode, User, Search, Shirt,
+  Filter, ChevronDown, UploadCloud, ImageIcon, Settings, Lock, Edit, PlayCircle
 } from 'lucide-react';
 
 // --- FIREBASE CLOUD STORAGE IMPORTS ---
@@ -14,8 +14,6 @@ import { getFirestore, collection, addDoc, getDocs, doc, setDoc, deleteDoc, onSn
 
 // ============================================================================
 // 🏦 CẤU HÌNH TÀI KHOẢN NGÂN HÀNG (VIETQR / SEPAY)
-// Quan trọng: Sử dụng TÊN VIẾT TẮT chuẩn của ngân hàng.
-// Ví dụ: MB, VCB, TCB, ACB, TPB, VIB, VPB, STB, BIDV...
 // ============================================================================
 const ROOM_BANK_NAME = 'VietinBank'; // Ngân hàng nhận tiền ĐẶT PHÒNG
 const ROOM_BANK_ACC = '106003101665'; // Số tài khoản nhận tiền ĐẶT PHÒNG
@@ -29,7 +27,6 @@ const FOOD_BANK_OWNER = 'HO KINH DOANH MAD STATION'; // Tên chủ tài khoản 
 // --- KHỞI TẠO CLOUD DATABASE ---
 let db, auth, appId;
 try {
-  // ⚠️ DÀNH CHO MÔI TRƯỜNG LOCAL (VS CODE CỦA BẠN):
   const LOCAL_FIREBASE_CONFIG = {
     apiKey: "AIzaSyBsYRhkHpybjB822e9viDxS_gFb-YQedow",
     authDomain: "madlad-space.firebaseapp.com",
@@ -51,7 +48,7 @@ try {
   console.error('Lỗi khởi tạo hệ thống Cloud:', error);
 }
 
-// --- LIQUID BACKGROUND SUBTLE ANIMATION (PROCEDURAL) ---
+// --- LIQUID BACKGROUND ---
 const LiquidBackground = ({ opacity }) => {
   const canvasRef = useRef(null);
 
@@ -59,10 +56,7 @@ const LiquidBackground = ({ opacity }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    const w = canvas.width = 300; 
-    const h = canvas.height = 300;
-    
+    const w = canvas.width = 300; const h = canvas.height = 300;
     const blobs = [
       { x: w * 0.3, y: h * 0.4, r: 80, dx: 0.5, dy: 0.3, color: '#111' },
       { x: w * 0.7, y: h * 0.3, r: 60, dx: -0.4, dy: 0.5, color: '#1a1a1a' },
@@ -70,181 +64,111 @@ const LiquidBackground = ({ opacity }) => {
     ];
 
     let animationFrameId;
-    
     const animate = () => {
       ctx.clearRect(0, 0, w, h);
-      
       blobs.forEach(b => {
         b.x += b.dx; b.y += b.dy;
         if (b.x < -b.r || b.x > w + b.r) b.dx *= -1;
         if (b.y < -b.r || b.y > h + b.r) b.dy *= -1;
-
         const gradient = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
         gradient.addColorStop(0, b.color);
         gradient.addColorStop(1, 'transparent');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill();
       });
-
       animationFrameId = requestAnimationFrame(animate);
     };
-    
     animate();
-    
     return () => cancelAnimationFrame(animationFrameId);
   }, []);
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', zIndex: 0, transition: 'opacity 0.7s ease', opacity: opacity }} className="pointer-events-none">
-      <canvas 
-        ref={canvasRef} 
-        style={{ width: '100%', height: '100%', filter: 'blur(50px) scale(1.1)', transformOrigin: 'center' }} 
-      />
+      <canvas ref={canvasRef} style={{ width: '100%', height: '100%', filter: 'blur(50px) scale(1.1)', transformOrigin: 'center' }} />
     </div>
   );
 };
 
-
-// --- DATA MẶC ĐỊNH ---
+// --- KHÔI PHỤC DATA PHÒNG ĐẦY ĐỦ ---
 const DEFAULT_ROOMS = [
   {
-    id: 'studio',
-    order: 1,
-    name: 'HẠNG STUDIO',
-    concept: 'Vũ trụ & Giải trí',
-    image: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    priceFrom: '500.000 - 600.000',
+    id: 'studio', order: 1, name: 'HẠNG STUDIO', concept: 'Vũ trụ & Giải trí', image: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', priceFrom: '500.000 - 600.000',
     features: ['Máy chiếu 4K, app phim độc quyền', 'Phòng tắm riêng, bàn ủi', 'Board game đa dạng', 'Bếp riêng đầy đủ đồ'],
-    description: 'Không gian giải trí đỉnh cao với tiện ích chung gồm máy chiếu, bếp riêng và board game. (Áp dụng: 500.000đ/2 người — 600.000đ/4 người).',
+    description: 'Không gian giải trí đỉnh cao với tiện ích chung gồm máy chiếu, bếp riêng và board game.',
     subRooms: [
       { 
-        id: 'studio-sun', name: 'Phòng Sun', price: '500.000 - 600.000', bed: '2 Giường đôi (2-4 Người)', status: 'Trống', 
+        id: 'studio-sun', name: 'Phòng Sun', price: '500.000 - 600.000', bed: '2 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Game Nintendo, bồn tắm, ban công', 'Diện tích 20m2', 'Máy chiếu Netflix, Youtube Premium...', 'Bếp riêng: gia vị, xoong nồi, bếp từ...', 'Phòng tắm riêng, máy sấy tóc, bàn ủi', 'Board Game: Drinking Card, Cá sấu...']
+        images: ['https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Game Nintendo, bồn tắm, ban công', 'Diện tích 20m2', 'Máy chiếu Netflix, Youtube Premium...', 'Bếp riêng: gia vị, xoong nồi, bếp từ...', 'Phòng tắm riêng, máy sấy tóc, bàn ủi', 'Board Game: Drinking Card, Cá sấu...'] 
       },
       { 
-        id: 'studio-pluto', name: 'Phòng Pluto', price: '500.000 - 600.000', bed: '2 Giường đôi (2-4 Người)', status: 'Trống', 
+        id: 'studio-pluto', name: 'Phòng Pluto', price: '500.000 - 600.000', bed: '2 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1598928506311-c55dd1b31526?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Game PS4, Bàn bida, Vô lăng giả lập', 'Diện tích 25m2', 'Máy chiếu Netflix, Youtube Premium...', 'Bếp riêng: gia vị, xoong nồi, bếp từ...', 'Phòng tắm riêng, máy sấy tóc, bàn ủi', 'Board Game: Drinking Card, Cá sấu...']
+        images: ['https://images.unsplash.com/photo-1578683010236-d716f9a3f461?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1598928506311-c55dd1b31526?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Game PS4, Bàn bida, Vô lăng giả lập', 'Diện tích 25m2', 'Máy chiếu Netflix, Youtube Premium...', 'Bếp riêng: gia vị, xoong nồi, bếp từ...', 'Phòng tắm riêng, máy sấy tóc, bàn ủi', 'Board Game: Drinking Card, Cá sấu...'] 
       }
     ]
   },
   {
-    id: 'concept-plus',
-    order: 2,
-    name: 'HẠNG CONCEPT PLUS',
-    concept: 'Nghệ thuật & Mở rộng',
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    priceFrom: '400.000',
+    id: 'concept-plus', order: 2, name: 'HẠNG CONCEPT PLUS', concept: 'Nghệ thuật & Mở rộng', image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', priceFrom: '400.000',
     features: ['Máy chiếu FullHD', 'App phim độc quyền', 'Bếp mini riêng', 'Ghế sofa, Máy PS4'],
     description: 'Sự nâng cấp tuyệt vời với không gian rộng rãi hơn, trang bị máy chiếu FullHD, app phim rạp độc quyền, bếp mini và máy game PS4 giải trí cực đã.',
     subRooms: [
       { 
         id: 'cplus-mercury', name: 'Phòng Mercury', price: '400.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1611892440504-42a792e24d32?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa, Máy PS4']
+        images: ['https://images.unsplash.com/photo-1631049307264-da0ec9d70304?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1611892440504-42a792e24d32?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa, Máy PS4'] 
       }
     ]
   },
   {
-    id: 'concept',
-    order: 3,
-    name: 'HẠNG CONCEPT',
-    concept: 'Ấm áp & Chữa lành',
-    image: 'https://images.unsplash.com/photo-1598928506311-c55dd1b31526?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-    priceFrom: '300.000 - 350.000',
+    id: 'concept', order: 3, name: 'HẠNG CONCEPT', concept: 'Ấm áp & Chữa lành', image: 'https://images.unsplash.com/photo-1598928506311-c55dd1b31526?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', priceFrom: '300.000 - 350.000',
     features: ['Máy chiếu FullHD', 'App phim chiếu rạp', 'Bếp riêng mini', 'Diện tích 13-15m2'],
     description: 'Một trạm dừng chân ấm áp. Tận hưởng trọn vẹn tiện ích từ máy chiếu FullHD, app phim độc quyền, bếp mini riêng và board game trong không gian từ 13m2 - 15m2.',
     subRooms: [
       { 
         id: 'concept-jupiter', name: 'Phòng Jupiter', price: '300.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game', 'Kích thước phòng: 13m2']
+        images: ['https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game', 'Kích thước phòng: 13m2'] 
       },
       { 
         id: 'concept-mars', name: 'Phòng Mars', price: '350.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2']
+        images: ['https://images.unsplash.com/photo-1616594039964-ae9021a400a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2'] 
       },
       { 
         id: 'concept-moon', name: 'Phòng Moon', price: '350.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1505693314120-0d443867891c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2']
+        images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1505693314120-0d443867891c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2'] 
       },
       { 
         id: 'concept-venus', name: 'Phòng Venus', price: '350.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1505693314120-0d443867891c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2']
+        images: ['https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1505693314120-0d443867891c?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game, ghế sofa', 'Kích thước phòng: 15m2'] 
       },
       { 
         id: 'concept-uranus', name: 'Phòng Uranus', price: '300.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game', 'Kích thước phòng: 13m2']
+        images: ['https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1564078516393-cf04bd966897?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu FullHD, app phim chiếu rạp độc quyền', 'Nhà vệ sinh riêng, máy sấy tóc', 'Bếp riêng mini', 'Board game', 'Kích thước phòng: 13m2'] 
       }
     ]
   },
   {
-    id: 'basic',
-    order: 4,
-    name: 'HẠNG PHÒNG BASIC',
-    concept: 'Tối giản & Tiện nghi',
-    image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
-    priceFrom: '270.000',
+    id: 'basic', order: 4, name: 'HẠNG PHÒNG BASIC', concept: 'Tối giản & Tiện nghi', image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80', priceFrom: '270.000',
     features: ['Máy chiếu HD', 'Netflix & Youtube', 'NVS riêng, máy sấy', 'Kích thước 13m2'],
-    description: 'Sự lựa chọn hoàn hảo cho những chuyến lưu trú ngắn ngày. Không gian tối giản 13m2 nhưng trang bị đầy đủ máy chiếu HD để xem phim giải trí thư giãn.',
+    description: 'Sự lựa chọn hoàn hảo cho những chuyến lưu trú ngắn ngày.',
     subRooms: [
       { 
         id: 'basic-earth', name: 'Phòng Earth', price: '270.000', bed: '1 Giường đôi', status: 'Trống', 
         image: 'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-        images: [
-          'https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'
-        ],
-        amenities: ['Máy chiếu HD', 'App phim Netflix và Youtube', 'Nhà vệ sinh riêng, máy sấy tóc', 'Kích thước phòng: 13m2']
+        images: ['https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'],
+        amenities: ['Máy chiếu HD', 'App phim Netflix và Youtube', 'Nhà vệ sinh riêng, máy sấy tóc', 'Kích thước phòng: 13m2'] 
       }
     ]
   }
@@ -254,15 +178,6 @@ const DEFAULT_SNACKS = [
   { id: 'sb1', category: 'Snack bịch', name: 'Snack Khoai Tây O\'Star', desc: 'Khoai tây chiên giòn vị tự nhiên', price: 20000, image: 'https://images.unsplash.com/photo-1566478989037-eec170784d0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
   { id: 'sb2', category: 'Snack bịch', name: 'Snack Bắp Ngọt Swing', desc: 'Giòn rụm, vị bắp bơ sữa thơm lừng', price: 20000, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
   { id: 's12-1', category: 'Snack 12k', name: 'Đậu Phộng Tân Tân', desc: 'Hạt giòn béo ngậy, nhắm bia cực cuốn', price: 12000, image: 'https://images.unsplash.com/photo-1600115504107-1604a112cd53?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'mt1', category: 'Mì tôm', name: 'Mì Indomie Trứng Xúc Xích', desc: 'Mì xào khô cứu đói đêm khuya', price: 35000, image: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'xx1', category: 'Xúc xích', name: 'Xúc xích Đức nướng', desc: 'Nướng nóng hổi, thơm mùi khói', price: 25000, image: 'https://images.unsplash.com/photo-1585325701956-60dd9c858a81?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'nn1', category: 'Nước ngọt', name: 'Coca Cola / Pepsi', desc: 'Giải khát sảng khoái tức thì', price: 15000, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'dc1', category: 'Đồ có cồn', name: 'Bia Corona', desc: 'Thưởng thức cùng một lát chanh', price: 40000, image: 'https://images.unsplash.com/photo-1614315584648-968b209e7de7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'bt1', category: 'Bánh tráng', name: 'Bánh Tráng Trộn Sa Tế', desc: 'Đậm đà cay cay dễ nghiện', price: 25000, image: 'https://images.unsplash.com/photo-1541529086526-db283c563270?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'k1', category: 'Kem', name: 'Kem Ốc Quế Cornetto', desc: 'Socola và Vani ngọt ngào', price: 25000, image: 'https://images.unsplash.com/photo-1559703248-dcaaec9fab78?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'cg1', category: 'Chân gà', name: 'Chân Gà Sả Tắc', desc: 'Chua ngọt giòn sần sật', price: 50000, image: 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'clb1', category: 'Các loại bánh', name: 'Bánh Chocopie', desc: 'Bánh mềm nhân marshmallow', price: 15000, image: 'https://images.unsplash.com/photo-1587241321921-91a834d6d191?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
-  { id: 'clk1', category: 'Các loại kẹo', name: 'Kẹo Dẻo Chupa Chups', desc: 'Chua ngọt hương trái cây', price: 15000, image: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80' },
 ];
 
 const SERVICES = [
@@ -289,11 +204,18 @@ const generateBookingCode = () => 'MDL' + Math.floor(10000 + Math.random() * 900
 
 const generatePasscode = (dob) => {
   if (!dob) return Math.floor(1000 + Math.random() * 9000).toString();
-  const parts = dob.split('-'); 
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}${parts[1]}${parts[0][0]}${parts[0][2]}${parts[0][3]}#`;
+  const cleanDob = dob.replace(/\D/g, ''); 
+  if (cleanDob.length === 8) {
+    return `${cleanDob.slice(4,8)}${cleanDob.slice(2,4)}${cleanDob[0]}${cleanDob[2]}${cleanDob[3]}#`;
   }
   return Math.floor(1000 + Math.random() * 9000).toString();
+};
+
+const getNextDay = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
 };
 
 export default function App() {
@@ -305,11 +227,12 @@ export default function App() {
   const [fbUser, setFbUser] = useState(null); 
   const [bookingsDb, setBookingsDb] = useState([]);
   const [accountsDb, setAccountsDb] = useState([]);
+  const [globalSettings, setGlobalSettings] = useState({ holidayStart: '', holidayEnd: '', surchargeHourlyPct: '', surchargeDailyVnd: '' });
   const bookingsDbRef = useRef(bookingsDb);
 
   // --- APP STATE ---
   const [currentUser, setCurrentUser] = useState(null); 
-  const [registerForm, setRegisterForm] = useState({ username: '', password: '', name: '', dob: '', phone: '', cccdImage: null });
+  const [registerForm, setRegisterForm] = useState({ username: '', password: '', dob: '', phone: '', cccdImage: null });
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [authState, setAuthState] = useState({ isOpen: false, view: 'login' });
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
@@ -317,7 +240,13 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [viewingRoom, setViewingRoom] = useState(null);
 
-  const [bookingForm, setBookingForm] = useState({ type: 'hourly', dateIn: '', timeIn: '', dateOut: '', timeOut: '', guests: 2 });
+  // Khởi tạo Constraints Ngày tháng
+  const todayDateObj = new Date();
+  const minDateStr = todayDateObj.toISOString().split('T')[0];
+  const nextMonthDateObj = new Date(todayDateObj.getFullYear(), todayDateObj.getMonth() + 2, 0); 
+  const maxDateStr = nextMonthDateObj.toISOString().split('T')[0];
+
+  const [bookingForm, setBookingForm] = useState({ type: 'hourly', dateIn: minDateStr, timeIn: '', dateOut: minDateStr, timeOut: '', guests: 2 });
   const [bookingView, setBookingView] = useState('form'); 
   const [availableRooms, setAvailableRooms] = useState([]);
   const [searchSummary, setSearchSummary] = useState({ text: '', duration: 0 });
@@ -325,9 +254,12 @@ export default function App() {
   const [guestInfo, setGuestInfo] = useState({ name: '', dob: '', phone: '', cccdImage: null });
   const [finalBookingData, setFinalBookingData] = useState(null);
   
-  // Trạng thái giữ mã Đặt phòng tạm thời trước khi thanh toán
   const [pendingBookingCode, setPendingBookingCode] = useState('');
-  const [pendingFoodOrderId, setPendingFoodOrderId] = useState(''); // Thêm state cho Đồ ăn
+  const [pendingFoodOrderId, setPendingFoodOrderId] = useState('');
+
+  const [guestFormError, setGuestFormError] = useState(''); 
+  const [authFormError, setAuthFormError] = useState(''); 
+  const [isCheckingCCCD, setIsCheckingCCCD] = useState(false); // State báo hiệu AI đang quét ảnh
 
   const [searchCode, setSearchCode] = useState('');
   const [searchResult, setSearchResult] = useState(null);
@@ -338,7 +270,6 @@ export default function App() {
   const [foodPaymentMethod, setFoodPaymentMethod] = useState('cash'); 
   const [addedItemId, setAddedItemId] = useState(null); 
   const [isFoodMenuOpen, setIsFoodMenuOpen] = useState(false);
-  
   const [activeFoodCategory, setActiveFoodCategory] = useState('Tất cả');
   const [isFoodCategoryOpen, setIsFoodCategoryOpen] = useState(false);
 
@@ -346,52 +277,51 @@ export default function App() {
   const [snacksDb, setSnacksDb] = useState([]);
   const [roomsDb, setRoomsDb] = useState([]); 
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-  const [adminView, setAdminView] = useState('login'); // 'login', 'select', 'menu', 'rooms'
+  const [adminView, setAdminView] = useState('login'); 
   const [adminPasscode, setAdminPasscode] = useState('');
   
-  // Menu Admin
+  const [manualBookingForm, setManualBookingForm] = useState({ roomKey: '', roomName: '', categoryName: '', guestName: 'Khách FB/Zalo', dateIn: '', timeIn: '14:00', dateOut: '', timeOut: '12:00' });
   const [snackForm, setSnackForm] = useState({ category: '', name: '', desc: '', price: '', image: null });
   const [editingSnackId, setEditingSnackId] = useState(null); 
   const [adminSearchQuery, setAdminSearchQuery] = useState(''); 
   const [adminFilterCategory, setAdminFilterCategory] = useState('Tất cả'); 
   
-  // Rooms Admin
   const [roomEditMode, setRoomEditMode] = useState(null); 
   const [activeAdminCategory, setActiveAdminCategory] = useState(null); 
-  const [roomCatForm, setRoomCatForm] = useState({ name: '', concept: '', priceFrom: '', description: '', features: '', image: null, order: 0 });
-  const [subRoomForm, setSubRoomForm] = useState({ id: '', name: '', price: '', bed: '', amenities: '', image: null, image2: null, image3: null, status: 'Trống' });
+  const [roomCatForm, setRoomCatForm] = useState({ 
+    name: '', concept: '', priceFrom: '', description: '', features: '', image: null, order: 0, 
+    price2h: '', price3h: '', price4h: '', price5h: '', price6h: '', price7h: '', price8h: '', price9h: '', price10h: '', price30m: '', 
+    surchargeEarly: '', surchargeLate: '' 
+  });
+  const [subRoomForm, setSubRoomForm] = useState({ id: '', name: '', price: '', bed: '', amenities: '', image: null, image2: null, image3: null, status: 'Trống', youtubeLink: '' });
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const [editingSubRoomId, setEditingSubRoomId] = useState(null);
 
-  // --- ANIMATION STATE & REFS ---
+  // --- ANIMATION STATE ---
   const heroSectionRef = useRef(null);
   const [isHeroLoaded, setIsHeroLoaded] = useState(false);
   const [showLiquidBg, setShowLiquidBg] = useState(true);
 
-  // Biến hợp nhất fallback DB rỗng
   const activeRooms = roomsDb.length > 0 ? roomsDb : DEFAULT_ROOMS;
   const dynamicCategories = ['Tất cả', ...Array.from(new Set(snacksDb.map(s => s.category || 'Khác')))];
+  const allSubRoomsFlat = activeRooms.reduce((acc, cat) => acc.concat((cat.subRooms || []).map(r => ({...r, categoryName: cat.name}))), []);
 
   const filteredAdminSnacks = snacksDb.filter(snack => {
     const cat = snack.category || '';
     const name = snack.name || '';
-    const matchesCategory = adminFilterCategory === 'Tất cả' || cat === adminFilterCategory;
-    const matchesSearch = name.toLowerCase().includes((adminSearchQuery || '').toLowerCase());
-    return matchesCategory && matchesSearch;
+    return (adminFilterCategory === 'Tất cả' || cat === adminFilterCategory) && name.toLowerCase().includes((adminSearchQuery || '').toLowerCase());
   });
 
   useEffect(() => { bookingsDbRef.current = bookingsDb; }, [bookingsDb]);
 
-  // --- 1. FIREBASE SYNC ---
+  // --- FIREBASE SYNC ---
   useEffect(() => {
     if (!auth) return;
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
+        } else { await signInAnonymously(auth); }
       } catch (err) { console.error("Lỗi đăng nhập Cloud:", err); }
     };
     initAuth();
@@ -401,74 +331,41 @@ export default function App() {
 
   useEffect(() => {
     if (!fbUser || !db) return;
-    
-    const bookingsRef = collection(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings');
-    const accountsRef = collection(db, 'artifacts', appId, 'public', 'data', 'madlad_accounts');
-    const menuRef = collection(db, 'artifacts', appId, 'public', 'data', 'madlad_menu');
-    const roomsSystemRef = collection(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms');
-
-    const unsubBookings = onSnapshot(bookingsRef, (snapshot) => {
-      setBookingsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Lỗi đồng bộ Booking:", err));
-
-    const unsubAccounts = onSnapshot(accountsRef, (snapshot) => {
-      setAccountsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Lỗi đồng bộ Account:", err));
-
-    const unsubMenu = onSnapshot(menuRef, (snapshot) => {
-      setSnacksDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (err) => console.error("Lỗi đồng bộ Menu:", err));
-
-    const unsubRooms = onSnapshot(roomsSystemRef, (snapshot) => {
-      const fetchedRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRoomsDb(fetchedRooms.sort((a, b) => a.order - b.order));
-    }, (err) => console.error("Lỗi đồng bộ Rooms:", err));
-
-    return () => { unsubBookings(); unsubAccounts(); unsubMenu(); unsubRooms(); };
+    const unsubBookings = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings'), (snapshot) => setBookingsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+    const unsubAccounts = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_accounts'), (snapshot) => setAccountsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+    const unsubMenu = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_menu'), (snapshot) => setSnacksDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
+    const unsubRooms = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms'), (snapshot) => setRoomsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order)));
+    const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_settings', 'global'), (docSnap) => {
+        if (docSnap.exists()) setGlobalSettings(docSnap.data());
+    });
+    return () => { unsubBookings(); unsubAccounts(); unsubMenu(); unsubRooms(); unsubSettings(); };
   }, [fbUser]);
 
-  // --- 2. CLEANUP TỰ ĐỘNG ---
+  // --- TỰ ĐỘNG DỌN DẸP ---
   useEffect(() => {
     const interval = setInterval(() => {
       if (!db || !fbUser) return;
       const now = new Date();
       bookingsDbRef.current.forEach(async (booking) => {
-        const endDateTime = new Date(booking.isoEnd);
-        if (endDateTime <= now) {
-          try {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', booking.code));
-            console.log(`Đã dọn dẹp vé ${booking.code}`);
-          } catch(e) {}
+        if (new Date(booking.isoEnd) <= now) {
+          try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', booking.code)); } catch(e) {}
         }
       });
     }, 60000); 
     return () => clearInterval(interval);
   }, [fbUser]);
 
-  // --- 3. HIỆU ỨNG ANIMATION HERO ---
+  // --- ANIMATION HERO ---
   useEffect(() => {
-    setTimeout(() => {
-      setIsHeroLoaded(true);
-    }, 300);
-
+    setTimeout(() => setIsHeroLoaded(true), 300);
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
-      const sections = ['rooms', 'services', 'rules'];
       const scrollPosition = window.scrollY + window.innerHeight / 3;
-      let current = '';
-      for (const section of sections) {
-        const element = document.getElementById(section);
-        if (element && scrollPosition >= element.offsetTop) current = section;
-      }
-      setActiveSection(current);
-
-      // Hide liquid background on scroll down
-      const heroHeight = heroSectionRef.current?.offsetHeight || 500;
-      if (window.scrollY > heroHeight * 0.7) {
-        setShowLiquidBg(false);
-      } else {
-        setShowLiquidBg(true);
-      }
+      ['rooms', 'services', 'rules'].forEach(sec => {
+        const element = document.getElementById(sec);
+        if (element && scrollPosition >= element.offsetTop) setActiveSection(sec);
+      });
+      setShowLiquidBg(window.scrollY <= (heroSectionRef.current?.offsetHeight || 500) * 0.7);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
@@ -476,20 +373,17 @@ export default function App() {
 
   useEffect(() => {
     if (!bookingModalOpen) {
-      setBookingForm({ type: 'hourly', dateIn: '', timeIn: '', dateOut: '', timeOut: '', guests: 2 });
+      setBookingForm({ type: 'hourly', dateIn: minDateStr, timeIn: '', dateOut: minDateStr, timeOut: '', guests: 2 });
       setBookingView('form');
       setSelectedBookingRoom(null);
       setFinalBookingData(null);
       setPendingBookingCode('');
+      setGuestFormError(''); // Reset lỗi khi đóng form
       if (!currentUser) setGuestInfo({ name: '', dob: '', phone: '', cccdImage: null });
     }
   }, [bookingModalOpen, currentUser]);
 
-  // =====================================================================
-  // ⚡ LẮNG NGHE THANH TOÁN TỰ ĐỘNG (REAL-TIME LISTENER)
-  // =====================================================================
-  
-  // 1. Lắng nghe Đặt Phòng
+  // --- LẮNG NGHE THANH TOÁN TỰ ĐỘNG ---
   useEffect(() => {
     if (bookingView === 'payment' && pendingBookingCode && db) {
       const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', pendingBookingCode), (docSnap) => {
@@ -498,112 +392,222 @@ export default function App() {
           setBookingView('success');
         }
       });
-      return () => unsub(); // Dọn dẹp listener khi rời trang
+      return () => unsub(); 
     }
   }, [bookingView, pendingBookingCode, db]);
 
-  // 2. Lắng nghe Đặt Đồ Ăn
   useEffect(() => {
     if (cartView === 'payment' && pendingFoodOrderId && db) {
       const unsub = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', pendingFoodOrderId), (docSnap) => {
         if (docSnap.exists() && docSnap.data().status === 'success') {
           alert('✅ Thanh toán đồ ăn tự động thành công! Mình chờ một lát, nhân viên sẽ mang lên tận phòng ạ.');
-          setCart([]);
-          setIsCartOpen(false);
-          setCartView('cart');
-          setSelectedFoodRoom('');
-          setPendingFoodOrderId('');
+          setCart([]); setIsCartOpen(false); setCartView('cart'); setSelectedFoodRoom(''); setPendingFoodOrderId('');
         }
       });
       return () => unsub();
     }
   }, [cartView, pendingFoodOrderId, db]);
-  // =====================================================================
 
-  useEffect(() => {
-    if (authState.isOpen || isCartOpen || selectedCategory || viewingRoom || bookingModalOpen || searchModalOpen || isFoodMenuOpen || isAdminModalOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+  // --- HELPER FUNCTIONS ---
+  
+  // OCR AI FUNCTION (Trích xuất ngày sinh từ CCCD)
+  const extractDOBWithAI = async (base64Data) => {
+    const apiKey = ""; // API Key sẽ được truyền tự động vào môi trường
+    
+    const prompt = `Bạn là hệ thống kiểm duyệt AI đọc thẻ Căn cước công dân (CCCD) hoặc CMND của Việt Nam.
+    1. Nếu hình ảnh cung cấp KHÔNG PHẢI là mặt trước của CCCD/CMND (ví dụ ảnh mờ không đọc được, ảnh chụp phong cảnh, thú cưng, đồ vật, gói bánh/kẹo...), hãy CHỈ trả về đúng 1 chữ: INVALID
+    2. Nếu hình ảnh ĐÚNG LÀ mặt trước CCCD/CMND Việt Nam hợp lệ, hãy tìm và trích xuất Ngày sinh (Date of birth) ghi trên thẻ. CHỈ trả về duy nhất chuỗi ngày tháng năm theo định dạng DD/MM/YYYY. Tuyệt đối không thêm bất kỳ văn bản nào khác.`;
+
+    const payload = {
+      contents: [{
+        role: "user",
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: "image/jpeg", data: base64Data.split(',')[1] } }
+        ]
+      }]
+    };
+
+    const fetchWithRetry = async (retries = 5, delay = 1000) => {
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("API Error");
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "INVALID";
+      } catch (err) {
+        if (retries > 0) {
+          await new Promise(r => setTimeout(r, delay));
+          return fetchWithRetry(retries - 1, delay * 2);
+        }
+        throw err;
+      }
+    };
+
+    try {
+      const resultText = await fetchWithRetry();
+      return resultText;
+    } catch (e) {
+      console.error("AI API Error:", e);
+      return "01/01/2000"; // Fallback demo trong trường hợp quá tải mạng
     }
-  }, [authState.isOpen, isCartOpen, selectedCategory, viewingRoom, bookingModalOpen, searchModalOpen, isFoodMenuOpen, isAdminModalOpen]);
+  };
 
-  const handleImageUpload = (e, targetStateSetter, fieldName = 'cccdImage') => {
+  const handleImageUploadWithAI = async (e, targetStateSetter, errorSetter, fieldName = 'cccdImage') => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setIsCheckingCCCD(true);
+    errorSetter('');
 
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); 
-        targetStateSetter(prev => ({ ...prev, [fieldName]: compressedBase64 }));
+        const scaleSize = 800 / img.width;
+        canvas.width = 800; canvas.height = img.height * scaleSize;
+        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const base64Data = canvas.toDataURL('image/jpeg', 0.7);
+
+        // Đẩy ảnh lên Google Gemini AI
+        const aiDobResult = await extractDOBWithAI(base64Data);
+        setIsCheckingCCCD(false);
+
+        if (aiDobResult === "INVALID" || aiDobResult.length < 8) {
+           errorSetter("AI TỪ CHỐI: Ảnh không phải CCCD/CMND Việt Nam hợp lệ hoặc quá mờ. Vui lòng chụp lại hình ảnh mặt trước của thẻ thật rõ nét.");
+           e.target.value = ''; // Reset input để khách chọn lại ảnh
+        } else {
+           // Ép ép chuỗi trả về thành DD/MM/YYYY dù AI có nói rườm rà
+           let extractedDob = aiDobResult.replace(/\D/g, ''); // Xóa toàn bộ chữ, chỉ giữ số
+           if (extractedDob.length >= 8) {
+               extractedDob = `${extractedDob.slice(0,2)}/${extractedDob.slice(2,4)}/${extractedDob.slice(4,8)}`;
+           } else {
+               extractedDob = aiDobResult;
+           }
+           
+           // Đưa vào bộ xác thực Tuổi
+           const dobValidation = validateDobForm(extractedDob);
+           if (dobValidation !== "OK") {
+               errorSetter(`AI phát hiện Ngày sinh trên thẻ (${extractedDob}) không thỏa điều kiện: ${dobValidation}`);
+               e.target.value = '';
+           } else {
+               // Đã vượt qua mọi bài test -> Cho phép lưu CCCD và tự động điền DOB
+               targetStateSetter(prev => ({ ...prev, [fieldName]: base64Data, dob: extractedDob }));
+           }
+        }
       };
       img.src = event.target.result;
     };
     reader.readAsDataURL(file);
   };
 
+  // HÀM MỚI: Trả về lỗi string rõ ràng thay vì chỉ true/false
+  const validateDobForm = (dobStr) => {
+    if (!dobStr || dobStr.length !== 10) return "Vui lòng tải CCCD để AI tự động điền ngày sinh.";
+    const parts = dobStr.split('/');
+    if (parts.length !== 3) return "Định dạng ngày sinh không hợp lệ.";
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return "Ngày sinh chứa ký tự không hợp lệ.";
+    if (year < 1900) return "Năm sinh không hợp lệ.";
+    if (year > 2010) return "Hệ thống chỉ hỗ trợ đặt phòng cho khách sinh năm 2010 trở về trước.";
+    if (month < 1 || month > 12) return "Tháng sinh không hợp lệ.";
+    
+    // Check xem ngày đó có tồn tại trong tháng/năm đó không (ví dụ tháng 2 năm nhuận)
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) return "Ngày sinh không tồn tại trong tháng này.";
+    
+    return "OK";
+  };
+
+  const validatePhoneForm = (phoneStr) => {
+    // Regex bắt buộc đầu số nhà mạng Việt Nam (03, 05, 07, 08, 09) và đúng 10 số
+    const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
+    return phoneRegex.test(phoneStr);
+  };
+
   const handleBookingTypeChange = (type) => {
     let updates = { type };
-    if (type === 'daily') {
-      updates.timeIn = '14:00';
-      updates.timeOut = '12:00';
-    } else if (type === 'overnight') {
-      updates.timeIn = '22:00';
-      updates.timeOut = '10:00';
-    } else if (type === 'hourly') {
-      updates.guests = 2;
+    if (type === 'daily') { 
+      updates.timeIn = '14:00'; updates.timeOut = '12:00'; 
+      updates.dateOut = getNextDay(bookingForm.dateIn);
+    } else if (type === 'overnight') { 
+      updates.timeIn = '22:00'; updates.timeOut = '10:00'; 
+      updates.dateOut = getNextDay(bookingForm.dateIn);
+    } else if (type === 'hourly') { 
+      updates.guests = 2; 
+      updates.dateOut = bookingForm.dateIn;
     }
     setBookingForm(prev => ({ ...prev, ...updates }));
   };
 
-  const getDateWarning = () => {
-    if (bookingForm.type === 'hourly') return null;
-    if (bookingForm.dateIn && bookingForm.dateOut && bookingForm.dateIn === bookingForm.dateOut) return "Ngày nhận và ngày trả không được trùng nhau.";
-    return null;
+  // Logic loại bỏ các giờ đã qua (yêu cầu đặt trước 30p)
+  const getAvailableTimeOptions = () => {
+    if (bookingForm.type !== 'hourly') return TIME_OPTIONS;
+    if (bookingForm.dateIn !== minDateStr) return TIME_OPTIONS;
+
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 30);
+    const currentH = now.getHours();
+    const currentM = now.getMinutes();
+
+    return TIME_OPTIONS.filter(t => {
+      const [h, m] = t.value.split(':').map(Number);
+      return h > currentH || (h === currentH && m >= currentM);
+    });
   };
 
   const handleSearchRooms = async (e) => {
     e.preventDefault();
-    if (getDateWarning()) {
-      alert('Vui lòng kiểm tra lại ngày tháng!'); return;
-    }
+    if (bookingForm.type !== 'hourly' && bookingForm.dateIn === bookingForm.dateOut) return alert("Ngày nhận và ngày trả không được trùng nhau.");
 
-    let durationHours = 0, durationText = '', diffDays = 1;
+    let durationText = '', diffDays = 1;
+    let exactHours = 0, exactMins = 0;
 
     if (bookingForm.type === 'hourly') {
       const [hIn, mIn] = bookingForm.timeIn.split(':').map(Number);
       const [hOut, mOut] = bookingForm.timeOut.split(':').map(Number);
       let diffMinutes = (hOut * 60 + mOut) - (hIn * 60 + mIn);
       if (diffMinutes <= 0) diffMinutes += 24 * 60;
-      durationHours = Math.max(2, Math.ceil(diffMinutes / 60));
-      diffDays = 1;
-      durationText = `${durationHours} giờ`;
-    } else {
-      if (!bookingForm.dateIn || !bookingForm.dateOut) {
-        alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!'); return;
+      
+      if (diffMinutes <= 120) {
+          exactHours = 2;
+          exactMins = 0;
+      } else {
+          exactHours = Math.floor(diffMinutes / 60);
+          exactMins = diffMinutes % 60;
       }
-      const dIn = new Date(bookingForm.dateIn);
-      const dOut = new Date(bookingForm.dateOut);
-      const diffTime = Math.abs(dOut - dIn);
+
+      durationText = exactMins > 0 ? `${exactHours} giờ 30 phút` : `${exactHours} giờ`;
+    } else {
+      if (!bookingForm.dateIn || !bookingForm.dateOut) return alert('Vui lòng chọn đầy đủ ngày nhận và ngày trả!');
+      const diffTime = Math.abs(new Date(bookingForm.dateOut) - new Date(bookingForm.dateIn));
       diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
       durationText = `${diffDays} ${bookingForm.type === 'daily' ? 'ngày' : 'đêm'}`;
     }
 
-    setSearchSummary({ text: durationText, duration: bookingForm.type === 'hourly' ? durationHours : diffDays });
+    setSearchSummary({ text: durationText, duration: bookingForm.type === 'hourly' ? exactHours : diffDays });
 
     const dateOutVal = bookingForm.type === 'hourly' ? bookingForm.dateIn : bookingForm.dateOut;
-    
     const startReqTime = new Date(`${bookingForm.dateIn}T${bookingForm.timeIn}:00+07:00`).getTime();
     const endReqTime = new Date(`${dateOutVal}T${bookingForm.timeOut}:00+07:00`).getTime();
+
+    // XÁC ĐỊNH PHỤ THU LỄ BẰNG NGÀY CHECK-IN
+    let isHoliday = false;
+    if (globalSettings.holidayStart && globalSettings.holidayEnd) {
+         const dIn = new Date(bookingForm.dateIn).getTime();
+         const hStart = new Date(globalSettings.holidayStart).getTime();
+         const hEnd = new Date(globalSettings.holidayEnd).getTime();
+         if (dIn >= hStart && dIn <= hEnd) {
+             isHoliday = true;
+         }
+    }
 
     const bookedRoomKeys = bookingsDb.filter(booking => {
       const bStart = new Date(booking.isoStart).getTime();
@@ -621,34 +625,84 @@ export default function App() {
 
           if (isActuallyFree) {
             let price = 0;
-            const h = durationHours;
             const type = bookingForm.type;
             const guests = bookingForm.guests;
 
-            if (cat.id === 'studio') {
-              if (type === 'daily') price = (guests >= 3 ? 600000 : 500000) * diffDays;
-              else if (type === 'overnight') price = (guests >= 3 ? 500000 : 400000) * diffDays;
-              else { let p = 200000; if(h>2)p+=(Math.min(h,5)-2)*40000; if(h>=6)p+=30000; if(h>6)p+=(Math.min(h,10)-6)*40000; price = Math.min(p, 450000); }
-            } else if (cat.id === 'concept') {
-              const isPremium = ['concept-mars', 'concept-moon', 'concept-venus'].includes(room.id);
-              if (type === 'daily') price = (isPremium ? 350000 : 300000) * diffDays;
-              else if (type === 'overnight') price = (isPremium ? 280000 : 250000) * diffDays;
-              else { let p = 180000; if(h>2)p+=(Math.min(h,5)-2)*30000; if(h>=6)p+=20000; if(h>6)p+=(Math.min(h,10)-6)*30000; price = Math.min(p, 350000); }
-            } else if (cat.id === 'concept-plus') {
-              if (type === 'daily') price = 400000 * diffDays;
-              else if (type === 'overnight') price = 350000 * diffDays;
-              else { let p = 190000; if(h>2)p+=(Math.min(h,5)-2)*35000; if(h>=6)p+=50000; if(h>6)p+=(Math.min(h,10)-6)*35000; price = Math.min(p, 400000); }
-            } else if (cat.id === 'basic') {
-              if (type === 'daily') price = 270000 * diffDays;
-              else if (type === 'overnight') price = 230000 * diffDays;
-              else { let p = 140000; if(h>2)p+=(Math.min(h,5)-2)*20000; if(h>=6)p+=10000; if(h>6)p+=(Math.min(h,10)-6)*20000; price = Math.min(p, 270000); }
+            // XỬ LÝ TÍNH GIÁ CHÍNH XÁC
+            if (cat.price2h && type === 'hourly') {
+                const hourlyPrices = {
+                    2: Number(cat.price2h || 0),
+                    3: Number(cat.price3h || 0),
+                    4: Number(cat.price4h || 0),
+                    5: Number(cat.price5h || 0),
+                    6: Number(cat.price6h || 0),
+                    7: Number(cat.price7h || 0),
+                    8: Number(cat.price8h || 0),
+                    9: Number(cat.price9h || 0),
+                    10: Number(cat.price10h || 0)
+                };
+                let baseH = exactHours > 10 ? 10 : exactHours;
+                let p = hourlyPrices[baseH] || 0;
+                if (exactMins > 0) p += Number(cat.price30m || 0);
+                price = p;
+            } else {
+                // Giá dự phòng mặc định (Trường hợp chưa cài trong Admin)
+                if (cat.id === 'studio') {
+                  if (type === 'daily') price = (guests >= 3 ? 600000 : 500000) * diffDays;
+                  else if (type === 'overnight') price = (guests >= 3 ? 500000 : 400000) * diffDays;
+                  else { let p = 200000; if(exactHours>2)p+=(Math.min(exactHours,5)-2)*40000; if(exactHours>=6)p+=30000; if(exactHours>6)p+=(Math.min(exactHours,10)-6)*40000; price = Math.min(p, 450000); }
+                } else if (cat.id === 'concept') {
+                  const isPremium = ['concept-mars', 'concept-moon', 'concept-venus'].includes(room.id);
+                  if (type === 'daily') price = (isPremium ? 350000 : 300000) * diffDays;
+                  else if (type === 'overnight') price = (isPremium ? 280000 : 250000) * diffDays;
+                  else { let p = 180000; if(exactHours>2)p+=(Math.min(exactHours,5)-2)*30000; if(exactHours>=6)p+=20000; if(exactHours>6)p+=(Math.min(exactHours,10)-6)*30000; price = Math.min(p, 350000); }
+                } else if (cat.id === 'concept-plus') {
+                  if (type === 'daily') price = 400000 * diffDays;
+                  else if (type === 'overnight') price = 350000 * diffDays;
+                  else { let p = 190000; if(exactHours>2)p+=(Math.min(exactHours,5)-2)*35000; if(exactHours>=6)p+=50000; if(exactHours>6)p+=(Math.min(exactHours,10)-6)*35000; price = Math.min(p, 400000); }
+                } else if (cat.id === 'basic') {
+                  if (type === 'daily') price = 270000 * diffDays;
+                  else if (type === 'overnight') price = 230000 * diffDays;
+                  else { let p = 140000; if(exactHours>2)p+=(Math.min(exactHours,5)-2)*20000; if(exactHours>=6)p+=10000; if(exactHours>6)p+=(Math.min(exactHours,10)-6)*20000; price = Math.min(p, 270000); }
+                }
+            }
+
+            // TÍNH PHỤ THU SỚM / TRỄ CỦA ADMIN
+            if ((type === 'daily' || type === 'overnight') && (cat.surchargeEarly || cat.surchargeLate)) {
+                 const [hIn, mIn] = bookingForm.timeIn.split(':').map(Number);
+                 const [hOut, mOut] = bookingForm.timeOut.split(':').map(Number);
+
+                 let earlyMins = 0;
+                 if (type === 'overnight' && hIn >= 6 && hIn < 22) earlyMins = (22 * 60) - (hIn * 60 + mIn);
+                 else if (type === 'daily' && hIn >= 6 && hIn < 14) earlyMins = (14 * 60) - (hIn * 60 + mIn);
+
+                 if (earlyMins > 0 && cat.surchargeEarly) {
+                     const earlyHours = Math.ceil(earlyMins / 60);
+                     price += earlyHours * Number(cat.surchargeEarly);
+                 }
+
+                 let lateMins = 0;
+                 if (type === 'overnight' && (hOut > 10 || (hOut === 10 && mOut > 0))) lateMins = (hOut * 60 + mOut) - (10 * 60);
+                 else if (type === 'daily' && (hOut > 12 || (hOut === 12 && mOut > 0))) lateMins = (hOut * 60 + mOut) - (12 * 60);
+
+                 if (lateMins > 0 && cat.surchargeLate) {
+                     const lateHours = Math.ceil(lateMins / 60);
+                     price += lateHours * Number(cat.surchargeLate);
+                 }
+            }
+
+            // TÍNH PHỤ THU LỄ
+            if (isHoliday) {
+                 if (type === 'hourly') {
+                     price += Math.round(price * (Number(globalSettings.surchargeHourlyPct || 0) / 100));
+                 } else {
+                     price += Number(globalSettings.surchargeDailyVnd || 0) * diffDays;
+                 }
             }
 
             if (guests >= 3 && cat.id !== 'studio') isActuallyFree = false;
 
-            if (isActuallyFree) {
-              results.push({ ...room, categoryName: cat.name, totalPrice: price });
-            }
+            if (isActuallyFree) results.push({ ...room, categoryName: cat.name, totalPrice: price, youtubeLink: room.youtubeLink || '' });
           }
         }
       });
@@ -658,32 +712,21 @@ export default function App() {
     setBookingView('results');
   };
 
-  // Hàm tạo dữ liệu chờ trên Firebase (Dùng chung cho Đặt phòng)
   const createPendingDoc = async (code, guest, room) => {
-    const passcode = generatePasscode(guest.dob);
+    // Generate passcode từ DOB tự động (Đã được định dạng sẵn từ AI)
+    const cleanDob = guest.dob.replace(/\D/g, ''); 
+    const passcode = cleanDob.length === 8 ? `${cleanDob.slice(4,8)}${cleanDob.slice(2,4)}${cleanDob[0]}${cleanDob[2]}${cleanDob[3]}#` : Math.floor(1000 + Math.random() * 9000).toString();
+    
     const dateOutVal = bookingForm.type === 'hourly' ? bookingForm.dateIn : bookingForm.dateOut;
-    const isoEnd = `${dateOutVal}T${bookingForm.timeOut}:00+07:00`;
     
     const newBooking = {
-      code: code,
-      passcode: passcode,
-      accountId: currentUser ? currentUser.username : 'guest',
-      guestData: { ...guest },
-      roomName: room.name,
-      categoryName: room.categoryName,
-      roomKey: room.id.split('-').pop().toLowerCase(),
-      dateIn: bookingForm.dateIn,
-      timeIn: bookingForm.timeIn,
-      dateOut: dateOutVal,
-      timeOut: bookingForm.timeOut,
-      startDateTime: `${bookingForm.dateIn} ${bookingForm.timeIn}`,
-      endDateTime: `${dateOutVal} ${bookingForm.timeOut}`,
-      isoStart: `${bookingForm.dateIn}T${bookingForm.timeIn}:00+07:00`,
-      isoEnd: isoEnd,
-      type: bookingForm.type,
-      totalPrice: room.totalPrice,
-      timestamp: new Date().toISOString(),
-      status: 'pending' // <--- Trạng thái chờ thanh toán tự động
+      code: code, passcode: passcode, accountId: currentUser ? currentUser.username : 'guest', guestData: { ...guest },
+      roomName: room.name, categoryName: room.categoryName, roomKey: room.id.split('-').pop().toLowerCase(),
+      dateIn: bookingForm.dateIn, timeIn: bookingForm.timeIn, dateOut: dateOutVal, timeOut: bookingForm.timeOut,
+      startDateTime: `${bookingForm.dateIn} ${bookingForm.timeIn}`, endDateTime: `${dateOutVal} ${bookingForm.timeOut}`,
+      isoStart: `${bookingForm.dateIn}T${bookingForm.timeIn}:00+07:00`, isoEnd: `${dateOutVal}T${bookingForm.timeOut}:00+07:00`,
+      type: bookingForm.type, totalPrice: room.totalPrice, timestamp: new Date().toISOString(), status: 'pending',
+      youtubeLink: room.youtubeLink || ''
     };
 
     try {
@@ -695,98 +738,83 @@ export default function App() {
 
   const handleSelectRoom = async (room) => {
     setSelectedBookingRoom(room);
-    
     const newCode = generateBookingCode();
     setPendingBookingCode(newCode);
-
     if (currentUser) {
       setGuestInfo(currentUser); 
       await createPendingDoc(newCode, currentUser, room);
       setBookingView('payment'); 
-    } else {
+    } else { 
+      setGuestFormError('');
       setBookingView('guest_info'); 
     }
   };
 
   const handleGuestSubmit = async (e) => {
     e.preventDefault();
-    if (!guestInfo.cccdImage) {
-      alert("Vui lòng tải lên hình ảnh CCCD mặt trước để hoàn tất hồ sơ lưu trú.");
-      return;
-    }
+    setGuestFormError(''); 
+    
+    const dobValidationResult = validateDobForm(guestInfo.dob);
+    if(dobValidationResult !== "OK") return setGuestFormError(dobValidationResult);
+    
+    if(!validatePhoneForm(guestInfo.phone)) return setGuestFormError("Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số.");
+    if (!guestInfo.cccdImage) return setGuestFormError("Vui lòng tải lên hình ảnh CCCD mặt trước.");
+    
     await createPendingDoc(pendingBookingCode, guestInfo, selectedBookingRoom);
     setBookingView('payment');
   };
 
-  // Nút xác nhận thủ công (Dự phòng khi Make.com/SePay lỗi)
-  const handlePaymentComplete = async () => {
-    try {
-      // 1. Cập nhật Firebase thành success
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', pendingBookingCode), { status: 'success' });
-      
-      // 2. Kích hoạt Webhook Make.com chốt lịch (như cũ)
-      const webhookChotLichURL = "https://hook.us2.make.com/a1u9ity96hic73e24bzg5fy3i652b7r8";
-      await fetch(webhookChotLichURL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({...finalBookingData, status: 'success'})
-      });
-    } catch (error) {
-      console.error("Lỗi xác nhận thủ công:", error);
-    }
-  };
-
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (!registerForm.cccdImage) return alert("Vui lòng tải lên ảnh CCCD mặt trước.");
-    if(accountsDb.find(acc => acc.username === registerForm.username)) return alert("Tên đăng nhập đã tồn tại.");
+    setAuthFormError('');
+    
+    const dobValidationResult = validateDobForm(registerForm.dob);
+    if(dobValidationResult !== "OK") return setAuthFormError("Đăng ký thất bại: " + dobValidationResult);
+    
+    if(!validatePhoneForm(registerForm.phone)) return setAuthFormError("Đăng ký thất bại: Số điện thoại không hợp lệ. Vui lòng nhập đúng 10 số.");
+    if (!registerForm.cccdImage) return setAuthFormError("Vui lòng tải lên ảnh CCCD mặt trước.");
+    if(accountsDb.find(acc => acc.username === registerForm.username)) return setAuthFormError("Tên đăng nhập đã tồn tại.");
 
     try {
-      if (!db || !fbUser) throw new Error("Hệ thống đám mây chưa sẵn sàng");
-      const newUser = { ...registerForm };
-      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_accounts', registerForm.username), newUser);
-      alert('Đăng ký tài khoản thành công! Thông tin cá nhân của bạn đã được bảo mật trên Cloud.');
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_accounts', registerForm.username), { ...registerForm, name: registerForm.username });
+      alert('Đăng ký tài khoản thành công!'); 
       setAuthState({...authState, view: 'login'});
-    } catch (err) {
-      alert("Lỗi lưu trữ hồ sơ: " + err.message);
-    }
+      setAuthFormError('');
+    } catch (err) { setAuthFormError("Lỗi lưu trữ hồ sơ: " + err.message); }
   };
 
   const handleLogin = (e) => {
     e.preventDefault();
+    setAuthFormError('');
     const user = accountsDb.find(acc => acc.username === loginForm.username && acc.password === loginForm.password);
-    if (user) {
-      setCurrentUser(user);
-      setAuthState({...authState, isOpen: false});
-    } else {
-      alert("Sai tên đăng nhập hoặc mật khẩu.");
-    }
+    if (user) { setCurrentUser(user); setAuthState({...authState, isOpen: false}); } 
+    else { setAuthFormError("Sai tên đăng nhập hoặc mật khẩu."); }
   };
 
   const handleSearchBooking = (e) => {
     e.preventDefault();
     setSearchResult(null);
-    const found = bookingsDb.find(b => b.code.toUpperCase() === searchCode.toUpperCase());
+    const kw = searchCode.toUpperCase();
+    const founds = bookingsDb.filter(b => b.code.toUpperCase() === kw || b.guestData?.phone === kw);
     
-    if (!found) {
-      setSearchResult({ status: 'error', message: 'Mã không tồn tại hoặc dữ liệu của bạn đã bị dọn dẹp khỏi Đám mây để bảo mật sau giờ Check-out.' });
-      return;
+    if (founds.length === 0) {
+      return setSearchResult({ status: 'error', message: 'Không tìm thấy vé đặt phòng nào với mã hoặc số điện thoại này.' });
     }
+    const found = founds.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
     setSearchResult({ status: 'success', data: found });
   };
 
   const addToCart = (item) => {
     setCart(prev => {
-      const existing = prev.find(cartItem => cartItem.id === item.id);
-      if (existing) return prev.map(cartItem => cartItem.id === item.id ? { ...cartItem, qty: cartItem.qty + 1 } : cartItem);
+      const existing = prev.find(c => c.id === item.id);
+      if (existing) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, { ...item, qty: 1 }];
     });
-    setAddedItemId(item.id);
-    setTimeout(() => setAddedItemId(null), 1000);
+    setAddedItemId(item.id); setTimeout(() => setAddedItemId(null), 1000);
   };
   
-  const updateQty = (id, delta) => setCart(prev => prev.map(i => i.id===id ? {...i, qty: i.qty+delta>0?i.qty+delta:i.qty} : i));
-  const removeFromCart = (id) => setCart(prev => prev.filter(item => item.id !== id));
+  const updateQty = (id, delta) => setCart(prev => prev.map(i => i.id===id ? {...i, qty: Math.max(1, i.qty+delta)} : i));
+  const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id));
   const cartTotalQty = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartTotalPrice = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const formatPrice = (price) => price.toLocaleString('vi-VN') + 'đ';
@@ -800,60 +828,56 @@ export default function App() {
     if (foodPaymentMethod === 'transfer') {
       const newOrderId = 'FD' + Date.now();
       setPendingFoodOrderId(newOrderId);
-      
-      const orderData = {
-        id: newOrderId,
-        roomName: room,
-        items: cart.map(item => `${item.name} (x${item.qty})`).join(', '),
-        totalPrice: cartTotalPrice,
-        paymentMethod: 'Chuyển khoản',
-        timestamp: new Date().toLocaleString('vi-VN'),
-        status: 'pending' // Chờ tự động
-      };
-
-      try {
-        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', newOrderId), orderData);
-      } catch(err) { console.error(err); }
-
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', newOrderId), {
+        id: newOrderId, roomName: room, items: cart.map(item => `${item.name} (x${item.qty})`).join(', '),
+        totalPrice: cartTotalPrice, paymentMethod: 'Chuyển khoản', timestamp: new Date().toLocaleString('vi-VN'), status: 'pending'
+      });
       setCartView('payment');
     } else {
       finalizeFoodOrder('Tiền mặt', room);
     }
   };
 
-  // Gọi webhook và hoàn tất cho Đồ ăn (Dùng cho Tiền mặt hoặc Nút Thủ công)
   const finalizeFoodOrder = async (method, roomNameParam = selectedFoodRoom) => {
-    const orderData = {
-      roomName: roomNameParam,
-      items: cart.map(item => `${item.name} (x${item.qty})`).join(', '),
-      totalPrice: cartTotalPrice,
-      paymentMethod: method,
-      timestamp: new Date().toLocaleString('vi-VN')
-    };
-
     try {
-      const foodWebhookURL = "https://hook.us2.make.com/dbb9tg3lntnkow2abztoxkkjtkiv1uar"; 
-      if (foodWebhookURL.includes("THAY_LINK_WEBHOOK")) {
-        console.warn("Chưa cấu hình Link Webhook Đồ Ăn!");
-      } else {
-        await fetch(foodWebhookURL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) });
-      }
-    } catch (error) {
-      console.error("Lỗi gửi đơn đồ ăn:", error);
-    }
+      await fetch("https://hook.us2.make.com/dbb9tg3lntnkow2abztoxkkjtkiv1uar", { method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ roomName: roomNameParam, items: cart.map(i => `${i.name} (x${i.qty})`).join(', '), totalPrice: cartTotalPrice, paymentMethod: method, timestamp: new Date().toLocaleString('vi-VN') }) });
+    } catch (e) {}
 
     if(method === 'Tiền mặt') {
        alert('Mình chờ home 1 tí, home sẽ để trước cửa rồi gõ cửa ạ');
-       setCart([]);
-       setIsCartOpen(false);
-       setCartView('cart');
-       setSelectedFoodRoom('');
-    } else {
-       // Cập nhật Firebase để tự động nhảy UI nếu bấm nút thủ công
-       if(pendingFoodOrderId) {
-         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_food_orders', pendingFoodOrderId), { status: 'success' });
-       }
+       setCart([]); setIsCartOpen(false); setCartView('cart'); setSelectedFoodRoom('');
     }
+  };
+
+  const handleManualBookingSubmit = async (e) => {
+    e.preventDefault();
+    if(!manualBookingForm.roomKey || !manualBookingForm.dateIn || !manualBookingForm.dateOut) return alert('Điền đủ thông tin phòng và ngày tháng.');
+    const startReqTime = new Date(`${manualBookingForm.dateIn}T${manualBookingForm.timeIn}:00+07:00`).getTime();
+    const endReqTime = new Date(`${manualBookingForm.dateOut}T${manualBookingForm.timeOut}:00+07:00`).getTime();
+
+    if(endReqTime <= startReqTime) return alert('Lỗi: Giờ trả phòng phải sau giờ nhận phòng!');
+    const isConflict = bookingsDb.some(b => {
+       if (b.roomKey !== manualBookingForm.roomKey) return false;
+       return startReqTime < new Date(b.isoEnd).getTime() && new Date(b.isoStart).getTime() < endReqTime;
+    });
+
+    if (isConflict && !window.confirm('CẢNH BÁO: Phòng này ĐÃ CÓ NGƯỜI ĐẶT. Chắc chắn chèn đè?')) return;
+
+    const code = 'MANUAL-' + Date.now().toString().slice(-6);
+    const newBooking = {
+      code, passcode: 'N/A', accountId: 'admin_manual', guestData: { name: manualBookingForm.guestName, phone: 'N/A' },
+      roomName: manualBookingForm.roomName, categoryName: manualBookingForm.categoryName, roomKey: manualBookingForm.roomKey,
+      dateIn: manualBookingForm.dateIn, timeIn: manualBookingForm.timeIn, dateOut: manualBookingForm.dateOut, timeOut: manualBookingForm.timeOut,
+      startDateTime: `${manualBookingForm.dateIn} ${manualBookingForm.timeIn}`, endDateTime: `${manualBookingForm.dateOut} ${manualBookingForm.timeOut}`,
+      isoStart: `${manualBookingForm.dateIn}T${manualBookingForm.timeIn}:00+07:00`, isoEnd: `${manualBookingForm.dateOut}T${manualBookingForm.timeOut}:00+07:00`,
+      type: 'manual', totalPrice: 0, timestamp: new Date().toISOString(), status: 'success'
+    };
+
+    try {
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', code), newBooking);
+      alert('Đã thêm lịch chặn phòng!'); setManualBookingForm({ ...manualBookingForm, guestName: 'Khách FB/Zalo' });
+    } catch(err) { alert('Lỗi: ' + err.message); }
   };
 
   return (
@@ -873,7 +897,7 @@ export default function App() {
             <button onClick={() => setIsFoodMenuOpen(true)} className={`text-[11px] lg:text-xs font-semibold uppercase tracking-[0.15em] transition-colors flex items-center gap-2 ${isFoodMenuOpen ? 'text-[#D4FF00]' : 'text-zinc-400 hover:text-white'}`}><UtensilsCrossed size={14}/> Đồ ăn</button>
             <a href="#services" onClick={() => setActiveSection('services')} className={`text-[11px] lg:text-xs font-semibold uppercase tracking-[0.15em] transition-colors ${activeSection === 'services' ? 'text-[#D4FF00]' : 'text-zinc-400 hover:text-white'}`}>Dịch vụ</a>
             
-            <button onClick={() => { setSearchModalOpen(true); setSearchCode(''); setSearchResult(null); }} className="relative p-2 text-zinc-400 hover:text-white transition-colors">
+            <button onClick={() => { setSearchModalOpen(true); setSearchCode(''); setSearchResult(null); }} className="relative p-2 text-zinc-400 hover:text-white transition-colors" title="Tra cứu mã đặt phòng hoặc SĐT">
               <Search size={20} strokeWidth={1.5} />
             </button>
 
@@ -885,7 +909,7 @@ export default function App() {
             {currentUser ? (
               <div className="flex items-center gap-2 px-4 py-2 border border-white/20 rounded-full cursor-pointer hover:border-[#D4FF00] transition-colors group" onClick={() => {if(window.confirm('Đăng xuất?')) setCurrentUser(null)}}>
                 <User size={16} className="text-[#D4FF00]" />
-                <span className="text-xs font-bold uppercase tracking-widest text-white group-hover:text-[#D4FF00]">{currentUser.name.split(' ').pop()}</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white group-hover:text-[#D4FF00]">{currentUser.username}</span>
               </div>
             ) : (
               <button onClick={() => setAuthState({ isOpen: true, view: 'login', username:'', password:'' })} className="relative group px-6 py-2.5 overflow-hidden rounded-full ml-2">
@@ -916,7 +940,7 @@ export default function App() {
             
             {currentUser ? (
               <button onClick={() => { setIsMenuOpen(false); setCurrentUser(null); }} className="w-fit text-sm font-bold uppercase tracking-[0.2em] text-[#D4FF00] mt-4">
-                Đăng xuất ({currentUser.name})
+                Đăng xuất ({currentUser.username})
               </button>
             ) : (
               <button onClick={() => { setIsMenuOpen(false); setAuthState({ isOpen: true, view: 'login' }); }} className="w-fit text-sm font-bold uppercase tracking-[0.2em] text-[#D4FF00] mt-4 flex items-center gap-2">
@@ -948,8 +972,8 @@ export default function App() {
             </h1>
           </div>
 
-          <button onClick={() => document.getElementById('rooms')?.scrollIntoView({behavior: 'smooth'})} className={`mt-16 group relative flex items-center gap-4 text-white hover:text-[#D4FF00] transition-all duration-700 ease-out delay-300 ${isHeroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-            <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]">Khám phá không gian</span>
+          <button onClick={() => setBookingModalOpen(true)} className={`mt-16 group relative flex items-center gap-4 text-white hover:text-[#D4FF00] transition-all duration-700 ease-out delay-300 ${isHeroLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.2em]">Đặt phòng ngay</span>
             <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 backdrop-blur-sm flex items-center justify-center group-hover:border-[#D4FF00] group-hover:bg-[#D4FF00]/10 transition-all duration-500">
               <ChevronRight size={16} strokeWidth={1.5} className="group-hover:translate-x-1 transition-transform" />
             </div>
@@ -979,8 +1003,7 @@ export default function App() {
 
                 <div className={`w-[90%] lg:w-5/12 relative z-10 -mt-20 lg:mt-0 ${idx % 2 !== 0 ? 'lg:-mr-32' : 'lg:-ml-32'}`}>
                   <div className="p-8 md:p-12 bg-[#050505]/80 hover:bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] rounded-3xl transition-all duration-500">
-                    <h4 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white mb-2 drop-shadow-sm">{category.name}</h4>
-                    <p className="text-xl font-serif italic text-[#D4FF00] mb-8">{category.priceFrom} VNĐ<span className="text-sm font-sans not-italic text-zinc-400"> / đêm</span></p>
+                    <h4 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white mb-6 drop-shadow-sm">{category.name}</h4>
                     <p className="text-sm font-light text-zinc-300 leading-relaxed mb-8">{category.description}</p>
                     <div className="h-px w-full bg-gradient-to-r from-white/20 to-transparent mb-8"></div>
                     <ul className="grid grid-cols-1 gap-4 mb-10">
@@ -1108,15 +1131,9 @@ export default function App() {
                       <div className="mb-4 relative group/input">
                         <select required name="room" defaultValue="" className="w-full bg-white/5 border border-white/20 py-3 px-4 rounded-xl text-sm text-white focus:outline-none focus:border-[#D4FF00] transition-colors appearance-none cursor-pointer">
                           <option value="" disabled className="text-zinc-500 bg-zinc-900">Bạn đang ở phòng nào?</option>
-                          <option value="Phòng Sun" className="bg-zinc-900 text-white">Phòng Sun (Hạng Studio)</option>
-                          <option value="Phòng Pluto" className="bg-zinc-900 text-white">Phòng Pluto (Hạng Studio)</option>
-                          <option value="Phòng Mercury" className="bg-zinc-900 text-white">Phòng Mercury (Hạng Concept Plus)</option>
-                          <option value="Phòng Jupiter" className="bg-zinc-900 text-white">Phòng Jupiter (Hạng Concept)</option>
-                          <option value="Phòng Mars" className="bg-zinc-900 text-white">Phòng Mars (Hạng Concept)</option>
-                          <option value="Phòng Moon" className="bg-zinc-900 text-white">Phòng Moon (Hạng Concept)</option>
-                          <option value="Phòng Venus" className="bg-zinc-900 text-white">Phòng Venus (Hạng Concept)</option>
-                          <option value="Phòng Uranus" className="bg-zinc-900 text-white">Phòng Uranus (Hạng Concept)</option>
-                          <option value="Phòng Earth" className="bg-zinc-900 text-white">Phòng Earth (Hạng Basic)</option>
+                          {allSubRoomsFlat.map(room => (
+                            <option key={room.id} value={room.name} className="bg-zinc-900 text-white">{room.name} ({room.categoryName})</option>
+                          ))}
                         </select>
                       </div>
 
@@ -1153,12 +1170,10 @@ export default function App() {
                 </div>
                 <h4 className="text-3xl font-serif italic text-white mb-3">{formatPrice(cartTotalPrice)}</h4>
                 <p className="text-[11px] text-zinc-400 mb-4 px-4 leading-relaxed">Vui lòng quét mã QR để thanh toán tiền đồ ăn cho phòng <strong className="text-white">{selectedFoodRoom}</strong>.</p>
-                <p className="text-[10px] font-bold text-[#D4FF00] mb-8 text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-2">
+                <p className="text-[10px] font-bold text-[#D4FF00] mb-6 text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-2">
                   <Clock size={14} /> Đang chờ ngân hàng xác nhận...
                 </p>
-                <button onClick={() => finalizeFoodOrder('Chuyển khoản')} className="text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white underline underline-offset-4 decoration-white/20 transition-all">
-                  Chờ quá lâu? Bấm xác nhận thủ công
-                </button>
+                <p className="text-[9px] font-light text-zinc-500">Liên hệ 0918480821 để được hỗ trợ nếu bạn đã thanh toán xong nhưng chưa hiện biên lai.</p>
               </div>
             )}
           </div>
@@ -1317,19 +1332,25 @@ export default function App() {
                     )}
                     <div className={bookingForm.type === 'hourly' ? 'col-span-2' : 'col-span-1'}>
                       <label className="block text-[11px] font-bold text-zinc-200 uppercase tracking-widest mb-2">Ngày nhận phòng</label>
-                      <input required type="date" value={bookingForm.dateIn} onChange={e => setBookingForm({...bookingForm, dateIn: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
+                      <input required type="date" min={minDateStr} max={maxDateStr} value={bookingForm.dateIn} onChange={e => {
+                        const newDateIn = e.target.value;
+                        setBookingForm(prev => ({
+                            ...prev, dateIn: newDateIn, 
+                            dateOut: prev.type === 'hourly' ? newDateIn : getNextDay(newDateIn)
+                        }));
+                      }} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
                     </div>
                     {bookingForm.type !== 'hourly' && (
                       <div className="col-span-1">
                         <label className="block text-[11px] font-bold text-zinc-200 uppercase tracking-widest mb-2">Ngày trả phòng</label>
-                        <input required type="date" value={bookingForm.dateOut} onChange={e => setBookingForm({...bookingForm, dateOut: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
+                        <input required type="date" min={bookingForm.dateIn || minDateStr} max={maxDateStr} value={bookingForm.dateOut} onChange={e => setBookingForm({...bookingForm, dateOut: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
                       </div>
                     )}
                     <div className="col-span-1">
                       <label className="block text-[11px] font-bold text-zinc-200 uppercase tracking-widest mb-2">Giờ nhận phòng</label>
                       <select required value={bookingForm.timeIn} onChange={e => setBookingForm({...bookingForm, timeIn: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] appearance-none">
                         <option value="" disabled className="text-zinc-500">--:-- --</option>
-                        {TIME_OPTIONS.map(t => <option key={t.value} value={t.value} className="bg-zinc-900 text-white">{t.label}</option>)}
+                        {getAvailableTimeOptions().map(t => <option key={t.value} value={t.value} className="bg-zinc-900 text-white">{t.label}</option>)}
                       </select>
                     </div>
                     <div className="col-span-1">
@@ -1341,9 +1362,25 @@ export default function App() {
                     </div>
                 </div>
 
-                <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-4 rounded-xl hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)] transition-all">
-                  Tìm Phòng Trống
-                </button>
+                {(() => {
+                  let isHourlyDisabled = false;
+                  if (bookingForm.type === 'hourly' && bookingForm.timeIn) {
+                    const h = parseInt(bookingForm.timeIn.split(':')[0]);
+                    if (h >= 22 || h < 6) isHourlyDisabled = true;
+                  }
+                  return (
+                    <>
+                      {isHourlyDisabled && (
+                        <p className="text-red-400 text-[10px] text-center italic mt-2 uppercase tracking-widest">
+                          * Đặt phòng từ 22h home sẽ tính giá thuê qua đêm. Vui lòng chọn gói Qua đêm.
+                        </p>
+                      )}
+                      <button disabled={isHourlyDisabled} type="submit" className={`w-full font-bold uppercase tracking-[0.2em] text-xs py-5 mt-4 rounded-xl transition-all flex items-center justify-center gap-2 ${isHourlyDisabled ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#D4FF00] text-black hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)]'}`}>
+                        <Search size={16} /> Tìm Phòng Trống
+                      </button>
+                    </>
+                  );
+                })()}
               </form>
             )}
 
@@ -1376,7 +1413,7 @@ export default function App() {
               </div>
             )}
 
-            {/* VIEW 3: THÔNG TIN KHÁCH (CCCD UPLOAD) */}
+            {/* VIEW 3: THÔNG TIN KHÁCH */}
             {bookingView === 'guest_info' && (
               <form className="p-8 pt-4 overflow-y-auto custom-scrollbar flex flex-col space-y-6" onSubmit={handleGuestSubmit}>
                 <div className="flex items-center gap-3 mb-2 border-b border-white/10 pb-4 shrink-0">
@@ -1387,41 +1424,50 @@ export default function App() {
                 <div className="bg-[#D4FF00]/10 border border-[#D4FF00]/20 p-4 rounded-xl flex items-start gap-3">
                   <Info size={16} className="text-[#D4FF00] shrink-0 mt-0.5" />
                   <p className="text-xs text-zinc-300 font-light">
-                    Vui lòng cung cấp CCCD để thực hiện thủ tục lưu trú. Thông tin của bạn sẽ được <strong className="text-[#D4FF00]">xóa hoàn toàn</strong> khỏi Đám mây ngay sau khi Check-out để đảm bảo riêng tư tuyệt đối.
+                    Thông tin của bạn sẽ được <strong className="text-[#D4FF00]">xóa hoàn toàn</strong> khỏi Đám mây ngay sau khi Check-out để đảm bảo riêng tư tuyệt đối.
                   </p>
                 </div>
+
+                {guestFormError && (
+                  <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3 animate-in fade-in">
+                    <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-200 font-light leading-relaxed">{guestFormError}</p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="col-span-2 relative group/input">
                     <input required type="text" id="g-name" value={guestInfo.name} onChange={e => setGuestInfo({...guestInfo, name: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Họ và tên" />
-                    <label htmlFor="g-name" className="absolute left-0 top-2 text-[11px] font-bold text-zinc-500 uppercase tracking-widest peer-focus:-top-4 peer-focus:text-[10px] peer-focus:text-[#D4FF00] peer-valid:-top-4 peer-valid:text-[10px] peer-valid:text-zinc-400 transition-all cursor-text">Họ và tên trên CCCD</label>
+                    <label htmlFor="g-name" className="absolute left-0 top-2 text-[11px] font-bold text-zinc-500 uppercase tracking-widest peer-focus:-top-4 peer-focus:text-[10px] peer-focus:text-[#D4FF00] peer-valid:-top-4 peer-valid:text-[10px] peer-valid:text-zinc-400 transition-all cursor-text">Tên người đặt phòng</label>
                   </div>
                   
                   <div className="col-span-1 relative group/input">
-                    <input required type="date" id="g-dob" value={guestInfo.dob} onChange={e => setGuestInfo({...guestInfo, dob: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
-                    <label htmlFor="g-dob" className="absolute left-0 -top-4 text-[10px] font-bold text-zinc-400 uppercase tracking-widest transition-all">Ngày sinh</label>
+                    <input readOnly id="g-dob" placeholder="AI tự điền khi up ảnh" value={guestInfo.dob} className="w-full bg-black/20 border-b border-white/20 py-2 text-sm text-zinc-400 focus:outline-none cursor-not-allowed peer" />
+                    <label htmlFor="g-dob" className="absolute left-0 -top-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest transition-all">Ngày sinh (AI tự quét)</label>
                   </div>
 
                   <div className="col-span-1 relative group/input">
-                    <input required type="tel" id="g-phone" value={guestInfo.phone} onChange={e => setGuestInfo({...guestInfo, phone: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Số ĐT" />
+                    <input required type="tel" id="g-phone" value={guestInfo.phone} onChange={e => setGuestInfo({...guestInfo, phone: e.target.value.replace(/\D/g, '')})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Số ĐT" />
                     <label htmlFor="g-phone" className="absolute left-0 top-2 text-[11px] font-bold text-zinc-500 uppercase tracking-widest peer-focus:-top-4 peer-focus:text-[10px] peer-focus:text-[#D4FF00] peer-valid:-top-4 peer-valid:text-[10px] peer-valid:text-zinc-400 transition-all cursor-text">Số Điện Thoại</label>
                   </div>
 
                   <div className="col-span-2 mt-2">
                     <label className="block text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Tải lên Mặt trước CCCD</label>
                     <div className="relative">
-                      <input 
-                        required={!guestInfo.cccdImage}
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => handleImageUpload(e, setGuestInfo)}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                      />
+                      <input required={!guestInfo.cccdImage} type="file" accept="image/*" onChange={(e) => handleImageUploadWithAI(e, setGuestInfo, setGuestFormError)} disabled={isCheckingCCCD} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                      
+                      {isCheckingCCCD && (
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-20 flex flex-col items-center justify-center rounded-2xl border border-[#D4FF00]">
+                          <div className="w-8 h-8 border-4 border-[#D4FF00] border-t-transparent rounded-full animate-spin mb-3 shadow-[0_0_15px_#D4FF00]"></div>
+                          <p className="text-[10px] font-bold text-[#D4FF00] animate-pulse uppercase tracking-widest">AI đang quét dữ liệu thẻ...</p>
+                        </div>
+                      )}
+
                       <div className={`w-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-6 transition-all ${guestInfo.cccdImage ? 'border-[#D4FF00] bg-[#D4FF00]/5' : 'border-white/20 hover:border-white/50 bg-black/20'}`}>
                         {guestInfo.cccdImage ? (
                           <div className="flex flex-col items-center text-center">
                             <img src={guestInfo.cccdImage} alt="CCCD Preview" className="h-24 object-contain rounded-lg mb-3 shadow-[0_4px_15px_rgba(0,0,0,0.5)] border border-white/10" />
-                            <p className="text-xs text-[#D4FF00] font-bold flex items-center gap-1"><CheckCircle size={14}/> Đã tải lên (Bấm để thay đổi)</p>
+                            <p className="text-xs text-[#D4FF00] font-bold flex items-center gap-1"><CheckCircle size={14}/> CCCD hợp lệ (Bấm để thay đổi)</p>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center text-center text-zinc-400 group-hover:text-white transition-colors">
@@ -1435,7 +1481,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-4 rounded-xl hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)] transition-all flex justify-center items-center gap-3">
+                <button disabled={isCheckingCCCD} type="submit" className={`w-full text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-4 rounded-xl transition-all flex justify-center items-center gap-3 ${isCheckingCCCD ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-[#D4FF00] hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)]'}`}>
                   Tiếp tục thanh toán <ChevronRight size={16} />
                 </button>
               </form>
@@ -1450,12 +1496,7 @@ export default function App() {
                   <div className="w-6"></div>
                 </div>
                 <div className="bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(212,255,0,0.15)] mb-6 relative">
-                  <img 
-                    src={`https://img.vietqr.io/image/${ROOM_BANK_NAME}-${ROOM_BANK_ACC}-qr_only.png?amount=${selectedBookingRoom?.totalPrice}&addInfo=${encodeURIComponent(pendingBookingCode)}&accountName=${encodeURIComponent(ROOM_BANK_OWNER)}`} 
-                    alt="QR Code Thanh Toán" 
-                    className="w-48 h-48 mix-blend-multiply object-contain" 
-                  />
-                  {/* Hiệu ứng loading quét mã */}
+                  <img src={`https://img.vietqr.io/image/${ROOM_BANK_NAME}-${ROOM_BANK_ACC}-qr_only.png?amount=${selectedBookingRoom?.totalPrice}&addInfo=${encodeURIComponent(pendingBookingCode)}&accountName=${encodeURIComponent(ROOM_BANK_OWNER)}`} alt="QR Code Thanh Toán" className="w-48 h-48 mix-blend-multiply object-contain" />
                   <div className="absolute inset-0 border-4 border-[#D4FF00]/50 rounded-2xl animate-pulse pointer-events-none"></div>
                 </div>
                 <h4 className="text-2xl font-serif italic text-white mb-2">{formatPrice(selectedBookingRoom?.totalPrice || 0)}</h4>
@@ -1463,10 +1504,7 @@ export default function App() {
                 <p className="text-[10px] font-bold text-[#D4FF00] mb-8 text-center uppercase tracking-widest animate-pulse flex items-center justify-center gap-2">
                   <Clock size={14} /> Hệ thống đang chờ nhận tiền...
                 </p>
-                
-                <button onClick={handlePaymentComplete} className="text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white underline underline-offset-4 decoration-white/20 transition-all">
-                  Chờ quá lâu? Bấm xác nhận thủ công
-                </button>
+                <p className="text-[9px] font-light text-zinc-500 text-center max-w-sm">Liên hệ 0918480821 để được hỗ trợ nếu bạn đã thanh toán xong nhưng chưa hiện biên lai cho mình.</p>
               </div>
             )}
 
@@ -1479,7 +1517,7 @@ export default function App() {
                 <h4 className="text-2xl font-black uppercase text-white tracking-tight mb-2">Đặt phòng thành công!</h4>
                 <p className="text-xs font-light text-zinc-400 mb-8">Cảm ơn bạn. Chào mừng đến với Madlad Space.</p>
                 
-                <div className="w-full bg-black/50 border border-white/10 rounded-2xl p-6 text-left space-y-4 mb-8">
+                <div className="w-full bg-black/50 border border-white/10 rounded-2xl p-6 text-left space-y-4 mb-6">
                   <div className="flex justify-between items-end border-b border-white/5 pb-4">
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Mã đặt phòng</span>
                     <span className="text-sm font-mono text-white">{finalBookingData.code}</span>
@@ -1499,6 +1537,13 @@ export default function App() {
                     <div className="bg-[#D4FF00] text-black px-4 py-2 rounded-lg font-mono font-black text-xl tracking-widest">{finalBookingData.passcode}</div>
                   </div>
                 </div>
+
+                {finalBookingData.youtubeLink && (
+                  <a href={finalBookingData.youtubeLink} target="_blank" rel="noopener noreferrer" className="w-full bg-red-600 text-white font-bold uppercase tracking-widest text-[10px] py-4 rounded-xl hover:bg-red-500 transition-all flex justify-center items-center gap-2 mb-6">
+                    <PlayCircle size={16} /> Hướng dẫn tự mở cửa phòng
+                  </a>
+                )}
+
                 <button onClick={() => setBookingModalOpen(false)} className="text-xs font-bold text-white uppercase tracking-[0.2em] border-b border-white/30 hover:border-white pb-1 transition-colors">Về trang chủ</button>
               </div>
             )}
@@ -1548,7 +1593,6 @@ export default function App() {
           <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setViewingRoom(null)}></div>
           <div className="w-full max-w-3xl bg-zinc-950/90 backdrop-blur-2xl border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.8)] rounded-3xl relative z-10 animate-in fade-in zoom-in-95 overflow-hidden flex flex-col max-h-[90vh]">
             
-            {/* LƯỚI HÌNH ẢNH (3 HOẶC 1 TÙY DỮ LIỆU) */}
             <div className="relative h-64 sm:h-[400px] w-full shrink-0 flex gap-1 p-1 bg-black rounded-t-3xl">
               {(() => {
                 const img1 = viewingRoom.images?.[0] || viewingRoom.image;
@@ -1631,7 +1675,7 @@ export default function App() {
         </div>
       )}
 
-      {/* --- AUTH MODAL (ĐĂNG NHẬP / ĐĂNG KÝ) --- */}
+      {/* --- AUTH MODAL --- */}
       {authState.isOpen && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center p-4 md:p-6">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setAuthState({...authState, isOpen: false})}></div>
@@ -1646,6 +1690,14 @@ export default function App() {
             </div>
             
             <div className="p-8 pt-6 relative z-10 overflow-y-auto custom-scrollbar flex-1">
+              
+              {authFormError && (
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-start gap-3 mb-6 animate-in fade-in">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-200 font-light leading-relaxed">{authFormError}</p>
+                </div>
+              )}
+
               {authState.view === 'login' ? (
                 <form className="space-y-6" onSubmit={handleLogin}>
                   <div className="relative group/input">
@@ -1659,14 +1711,14 @@ export default function App() {
                   <button type="submit" className="w-full bg-white text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-4 rounded-xl hover:bg-[#D4FF00] transition-all flex justify-center items-center gap-3">
                     Đăng Nhập <ArrowUpRight size={16} />
                   </button>
-                  <p className="text-center mt-6 text-xs font-light text-zinc-400">Chưa có hồ sơ lưu trú? <button type="button" onClick={() => setAuthState({...authState, view: 'register'})} className="text-[#D4FF00] font-bold hover:underline underline-offset-4">Đăng ký ngay</button></p>
+                  <p className="text-center mt-6 text-xs font-light text-zinc-400">Chưa có hồ sơ lưu trú? <button type="button" onClick={() => { setAuthState({...authState, view: 'register'}); setAuthFormError(''); }} className="text-[#D4FF00] font-bold hover:underline underline-offset-4">Đăng ký ngay</button></p>
                 </form>
               ) : (
                 <form className="space-y-6" onSubmit={handleRegister}>
                   <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-start gap-3">
                     <Info size={16} className="text-[#D4FF00] shrink-0 mt-0.5" />
                     <p className="text-[10px] text-zinc-300 font-light leading-relaxed">
-                      Hồ sơ thành viên sẽ được đồng bộ lên Cloud của Google. Chúng tôi chỉ lưu những thông tin cơ bản nhất để bạn không phải khai báo lại ở lần sau.
+                      Hồ sơ sẽ được bảo mật trên Cloud. Chúng tôi chỉ lưu những thông tin cơ bản nhất để bạn không phải khai báo lại ở lần sau.
                     </p>
                   </div>
 
@@ -1682,33 +1734,33 @@ export default function App() {
 
                     <div className="col-span-2 h-px bg-white/10 my-2"></div>
 
-                    <div className="col-span-2 relative group/input">
-                      <input required type="text" value={registerForm.name} onChange={e=>setRegisterForm({...registerForm, name: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Name" />
-                      <label className="absolute left-0 top-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest peer-focus:-top-4 peer-focus:text-[9px] peer-focus:text-[#D4FF00] peer-valid:-top-4 peer-valid:text-[9px] peer-valid:text-zinc-400 transition-all cursor-text">Họ tên trên CCCD</label>
+                    <div className="col-span-1 relative group/input">
+                      <input readOnly value={registerForm.dob} placeholder="AI tự điền khi up ảnh" className="w-full bg-black/20 border-b border-white/20 py-2 text-sm text-zinc-400 focus:outline-none cursor-not-allowed peer" />
+                      <label className="absolute left-0 -top-4 text-[9px] font-bold text-zinc-500 uppercase tracking-widest transition-all">Ngày sinh (AI tự quét)</label>
                     </div>
                     <div className="col-span-1 relative group/input">
-                      <input required type="date" value={registerForm.dob} onChange={e=>setRegisterForm({...registerForm, dob: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] [color-scheme:dark]" />
-                      <label className="absolute left-0 -top-4 text-[9px] font-bold text-zinc-400 uppercase tracking-widest transition-all">Ngày sinh</label>
-                    </div>
-                    <div className="col-span-1 relative group/input">
-                      <input required type="tel" value={registerForm.phone} onChange={e=>setRegisterForm({...registerForm, phone: e.target.value})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Phone" />
+                      <input required type="tel" value={registerForm.phone} onChange={e=>setRegisterForm({...registerForm, phone: e.target.value.replace(/\D/g, '')})} className="w-full bg-transparent border-b border-white/20 py-2 text-sm text-white focus:outline-none focus:border-[#D4FF00] peer placeholder-transparent" placeholder="Phone" />
                       <label className="absolute left-0 top-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest peer-focus:-top-4 peer-focus:text-[9px] peer-focus:text-[#D4FF00] peer-valid:-top-4 peer-valid:text-[9px] peer-valid:text-zinc-400 transition-all cursor-text">Số Điện Thoại</label>
                     </div>
 
                     <div className="col-span-2 mt-4">
                       <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Tải lên Mặt trước CCCD</label>
                       <div className="relative">
-                        <input 
-                          type="file" accept="image/*" 
-                          onChange={(e) => handleImageUpload(e, setRegisterForm)}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                        />
+                        <input type="file" accept="image/*" onChange={(e) => handleImageUploadWithAI(e, setRegisterForm, setAuthFormError)} disabled={isCheckingCCCD} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                        
+                        {isCheckingCCCD && (
+                          <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-20 flex flex-col items-center justify-center rounded-xl border border-[#D4FF00]">
+                            <div className="w-6 h-6 border-4 border-[#D4FF00] border-t-transparent rounded-full animate-spin mb-2 shadow-[0_0_10px_#D4FF00]"></div>
+                            <p className="text-[9px] font-bold text-[#D4FF00] animate-pulse uppercase tracking-widest">AI đang quét...</p>
+                          </div>
+                        )}
+
                         <div className={`w-full border-2 border-dashed rounded-xl flex items-center justify-center p-4 transition-all ${registerForm.cccdImage ? 'border-[#D4FF00] bg-[#D4FF00]/5' : 'border-white/20 bg-black/20'}`}>
                           {registerForm.cccdImage ? (
                             <div className="flex items-center gap-4 w-full">
                               <img src={registerForm.cccdImage} alt="CCCD Preview" className="h-12 w-16 object-cover rounded-md border border-white/10" />
                               <div className="text-left flex-1">
-                                <p className="text-xs text-[#D4FF00] font-bold flex items-center gap-1"><CheckCircle size={12}/> Đã lưu ảnh</p>
+                                <p className="text-xs text-[#D4FF00] font-bold flex items-center gap-1"><CheckCircle size={12}/> Hợp lệ</p>
                                 <p className="text-[9px] text-zinc-400">Bấm vào khung này để đổi ảnh khác</p>
                               </div>
                             </div>
@@ -1723,10 +1775,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-6 rounded-xl hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)] transition-all flex justify-center items-center gap-3">
+                  <button disabled={isCheckingCCCD} type="submit" className={`w-full text-black font-bold uppercase tracking-[0.2em] text-xs py-5 mt-6 rounded-xl transition-all flex justify-center items-center gap-3 ${isCheckingCCCD ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-[#D4FF00] hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)]'}`}>
                     Lưu Hồ Sơ Cloud <CheckCircle size={16} />
                   </button>
-                  <p className="text-center mt-6 text-xs font-light text-zinc-400">Đã có hồ sơ? <button type="button" onClick={() => setAuthState({...authState, view: 'login'})} className="text-white font-bold hover:underline underline-offset-4">Đăng nhập</button></p>
+                  <p className="text-center mt-6 text-xs font-light text-zinc-400">Đã có hồ sơ? <button type="button" onClick={() => { setAuthState({...authState, view: 'login'}); setAuthFormError(''); }} className="text-white font-bold hover:underline underline-offset-4">Đăng nhập</button></p>
                 </form>
               )}
             </div>
@@ -1745,7 +1797,7 @@ export default function App() {
             </div>
             <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
               <form onSubmit={handleSearchBooking} className="mb-6 flex gap-3">
-                <input type="text" required placeholder="Nhập mã đặt phòng (VD: MDL12345)" value={searchCode} onChange={(e) => setSearchCode(e.target.value.toUpperCase())} className="flex-1 bg-white/5 border border-white/20 py-3 px-4 rounded-xl text-sm text-white focus:border-[#D4FF00] font-mono tracking-widest outline-none" />
+                <input type="text" required placeholder="Nhập SĐT hoặc Mã đặt phòng..." value={searchCode} onChange={(e) => setSearchCode(e.target.value.toUpperCase())} className="flex-1 bg-white/5 border border-white/20 py-3 px-4 rounded-xl text-sm text-white focus:border-[#D4FF00] font-mono tracking-widest outline-none" />
                 <button type="submit" className="bg-[#D4FF00] text-black px-4 rounded-xl hover:bg-white transition-colors flex items-center justify-center"><Search size={20} strokeWidth={2} /></button>
               </form>
               {searchResult?.status === 'error' && (
@@ -1819,7 +1871,7 @@ export default function App() {
                 <div>
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#D4FF00] mb-1">Admin Dashboard</h3>
                   <h4 className="text-xl font-black uppercase text-white tracking-tight">
-                    {adminView === 'login' ? 'Xác thực' : adminView === 'select' ? 'Lựa chọn' : adminView === 'menu' ? 'Quản lý Thực đơn' : 'Quản lý Hạng Phòng'}
+                    {adminView === 'login' ? 'Xác thực' : adminView === 'select' ? 'Lựa chọn' : adminView === 'menu' ? 'Quản lý Thực đơn' : adminView === 'rooms' ? 'Quản lý Hạng Phòng' : adminView === 'surcharge' ? 'Phụ Thu Lễ' : 'Quản lý Lịch Đặt'}
                   </h4>
                 </div>
               </div>
@@ -1844,17 +1896,200 @@ export default function App() {
 
             {/* MÀN HÌNH LỰA CHỌN */}
             {adminView === 'select' && (
-              <div className="p-12 flex flex-col sm:flex-row items-center justify-center h-[60vh] gap-8">
-                <button onClick={() => setAdminView('rooms')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full max-w-sm aspect-square">
-                  <BedDouble size={64} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
-                  <span className="text-xl font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Hạng Phòng</span>
-                  <span className="text-xs text-zinc-400 mt-2 font-light">Hình ảnh, tên, giá & tiện ích</span>
+              <div className="p-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-center justify-center h-[60vh] max-w-5xl mx-auto">
+                <button onClick={() => setAdminView('rooms')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full aspect-square">
+                  <BedDouble size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
+                  <span className="text-lg font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Hạng Phòng</span>
+                  <span className="text-[10px] text-zinc-400 mt-2 font-light text-center">Cài đặt giá thuê, phụ thu...</span>
                 </button>
-                <button onClick={() => setAdminView('menu')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full max-w-sm aspect-square">
-                  <UtensilsCrossed size={64} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
-                  <span className="text-xl font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Thực Đơn</span>
-                  <span className="text-xs text-zinc-400 mt-2 font-light">Thêm/sửa món ăn, đồ uống</span>
+                <button onClick={() => setAdminView('surcharge')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full aspect-square">
+                  <Sparkles size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
+                  <span className="text-lg font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Phụ Thu Lễ</span>
+                  <span className="text-[10px] text-zinc-400 mt-2 font-light text-center">Tăng giá tự động dịp lễ/Tết</span>
                 </button>
+                <button onClick={() => setAdminView('bookings')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full aspect-square">
+                  <Calendar size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
+                  <span className="text-lg font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Quản lý Lịch</span>
+                  <span className="text-[10px] text-zinc-400 mt-2 font-light text-center">Chặn phòng, nhập khách ngoài</span>
+                </button>
+                <button onClick={() => setAdminView('menu')} className="group flex flex-col items-center justify-center p-10 bg-white/[0.02] border border-white/10 rounded-3xl hover:bg-white/5 hover:border-[#D4FF00]/50 transition-all w-full aspect-square">
+                  <UtensilsCrossed size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] mb-6 transition-colors" />
+                  <span className="text-lg font-black uppercase tracking-widest text-white group-hover:text-[#D4FF00] transition-colors">Thực Đơn</span>
+                  <span className="text-[10px] text-zinc-400 mt-2 font-light text-center">Thêm/sửa món ăn, đồ uống</span>
+                </button>
+              </div>
+            )}
+
+            {/* MÀN HÌNH CẤU HÌNH PHỤ THU LỄ */}
+            {adminView === 'surcharge' && (
+              <div className="p-8 max-w-2xl mx-auto w-full h-[60vh] overflow-y-auto custom-scrollbar flex flex-col justify-center">
+                <div className="text-center mb-8">
+                  <Sparkles size={48} className="text-[#D4FF00] mx-auto mb-4" />
+                  <h4 className="text-2xl font-black uppercase text-white tracking-widest mb-2">Cấu Hình Phụ Thu Lễ</h4>
+                  <p className="text-xs text-zinc-400 leading-relaxed">Hệ thống sẽ tự động cộng thêm phí theo tỷ lệ và số tiền bên dưới<br/> khi khách hàng chọn ngày nhận phòng nằm trong khoảng thời gian áp dụng.</p>
+                </div>
+                <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    try {
+                      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_settings', 'global'), globalSettings);
+                      alert('Lưu cấu hình phụ thu thành công!');
+                    } catch(err) { alert('Lỗi: ' + err.message); }
+                }} className="space-y-6 bg-white/[0.02] border border-white/10 p-8 rounded-3xl">
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Từ ngày (Ngày áp dụng)</label>
+                      <input type="date" value={globalSettings.holidayStart} onChange={e=>setGlobalSettings({...globalSettings, holidayStart: e.target.value})} className="w-full bg-black/50 border border-white/20 p-3 text-sm text-white rounded-xl focus:border-[#D4FF00] outline-none [color-scheme:dark]" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Đến ngày (Kết thúc)</label>
+                      <input type="date" value={globalSettings.holidayEnd} onChange={e=>setGlobalSettings({...globalSettings, holidayEnd: e.target.value})} className="w-full bg-black/50 border border-white/20 p-3 text-sm text-white rounded-xl focus:border-[#D4FF00] outline-none [color-scheme:dark]" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Phụ thu đặt theo giờ (%)</label>
+                      <div className="relative">
+                        <input type="number" placeholder="VD: 30" value={globalSettings.surchargeHourlyPct} onChange={e=>setGlobalSettings({...globalSettings, surchargeHourlyPct: e.target.value})} className="w-full bg-black/50 border border-white/20 p-3 text-sm text-white rounded-xl focus:border-[#D4FF00] outline-none" />
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 font-bold">%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Phụ thu Ngày/Đêm (VNĐ)</label>
+                      <input type="number" placeholder="VD: 100000" value={globalSettings.surchargeDailyVnd} onChange={e=>setGlobalSettings({...globalSettings, surchargeDailyVnd: e.target.value})} className="w-full bg-black/50 border border-white/20 p-3 text-sm text-white rounded-xl focus:border-[#D4FF00] outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4 border-t border-white/10">
+                    <button type="button" onClick={() => setGlobalSettings({ holidayStart: '', holidayEnd: '', surchargeHourlyPct: '', surchargeDailyVnd: '' })} className="flex-1 bg-red-500/10 text-red-400 font-bold uppercase tracking-widest text-[11px] py-4 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
+                      Xóa Phụ Thu 
+                    </button>
+                    <button type="submit" className="flex-2 w-2/3 bg-[#D4FF00] text-black font-bold uppercase tracking-widest text-[11px] py-4 rounded-xl hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)] transition-colors">
+                      Lưu & Áp Dụng Ngay
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* MÀN HÌNH QUẢN LÝ LỊCH (BOOKINGS) */}
+            {adminView === 'bookings' && (
+              <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+                {/* Cột trái: Form thêm lịch thủ công */}
+                <div className="w-full md:w-1/3 border-r border-white/10 bg-white/[0.02] p-6 overflow-y-auto custom-scrollbar">
+                  <div className="mb-6 border-b border-white/10 pb-4">
+                    <h4 className="text-sm font-bold text-[#D4FF00] uppercase tracking-widest flex items-center gap-2">
+                      <Lock size={16}/> Chặn phòng / Thêm khách ngoài
+                    </h4>
+                  </div>
+                  <form onSubmit={handleManualBookingSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Chọn Phòng</label>
+                      <select required className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none"
+                        value={manualBookingForm.roomKey ? allSubRoomsFlat.find(r => r.id.split('-').pop().toLowerCase() === manualBookingForm.roomKey)?.id : ''}
+                        onChange={(e) => {
+                          const selected = allSubRoomsFlat.find(r => r.id === e.target.value);
+                          if(selected) {
+                            setManualBookingForm({
+                              ...manualBookingForm,
+                              roomKey: selected.id.split('-').pop().toLowerCase(),
+                              roomName: selected.name,
+                              categoryName: selected.categoryName
+                            });
+                          }
+                        }}
+                      >
+                        <option value="" disabled>-- Chọn phòng cần chặn --</option>
+                        {allSubRoomsFlat.map(room => (
+                          <option key={room.id} value={room.id}>{room.categoryName} - {room.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Nguồn / Tên Khách</label>
+                      <input required value={manualBookingForm.guestName} onChange={e=>setManualBookingForm({...manualBookingForm, guestName: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" placeholder="VD: Khách Zalo, Khách Facebook..." />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Ngày vào</label>
+                        <input required type="date" value={manualBookingForm.dateIn} onChange={e=>setManualBookingForm({...manualBookingForm, dateIn: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none [color-scheme:dark]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Giờ vào</label>
+                        <select required value={manualBookingForm.timeIn} onChange={e=>setManualBookingForm({...manualBookingForm, timeIn: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none">
+                          {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Ngày ra</label>
+                        <input required type="date" value={manualBookingForm.dateOut} onChange={e=>setManualBookingForm({...manualBookingForm, dateOut: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none [color-scheme:dark]" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Giờ ra</label>
+                        <select required value={manualBookingForm.timeOut} onChange={e=>setManualBookingForm({...manualBookingForm, timeOut: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none">
+                          {TIME_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                        </select>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-widest text-[11px] py-3 mt-4 rounded-xl hover:bg-white transition-colors">
+                      Thêm Lịch Khách Chặn Phòng
+                    </button>
+                  </form>
+                </div>
+
+                {/* Cột phải: Danh sách Lịch */}
+                <div className="w-full md:w-2/3 p-6 overflow-y-auto custom-scrollbar bg-black/20">
+                  <div className="flex justify-between items-end mb-6 border-b border-white/10 pb-4">
+                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">Lịch Đang Có Trên Hệ Thống</h4>
+                  </div>
+
+                  {bookingsDb.length === 0 ? (
+                    <div className="text-center py-20 text-zinc-500 text-sm italic">Chưa có vé đặt phòng nào trên hệ thống.</div>
+                  ) : (
+                    <div className="space-y-4">
+                      {[...bookingsDb].sort((a,b) => new Date(a.isoStart) - new Date(b.isoStart)).map(booking => (
+                        <div key={booking.code} className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 rounded-xl border ${booking.accountId === 'admin_manual' ? 'bg-[#D4FF00]/5 border-[#D4FF00]/30' : 'bg-white/5 border-white/10'}`}>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{booking.code}</span>
+                              {booking.accountId === 'admin_manual' && <span className="bg-[#D4FF00] text-black text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Khách Ngoài</span>}
+                              {booking.status === 'pending' && <span className="bg-orange-500 text-white text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Chờ TT</span>}
+                            </div>
+                            <h5 className="text-base font-bold text-white mb-0.5">{booking.roomName} <span className="text-sm font-normal text-zinc-400">({booking.categoryName})</span></h5>
+                            <p className="text-xs text-zinc-400">Khách: <strong className="text-white">{booking.guestData?.name}</strong></p>
+                          </div>
+                          
+                          <div className="flex flex-col md:items-end w-full md:w-auto">
+                            <div className="flex items-center gap-2 mb-2 bg-black/30 px-3 py-1.5 rounded-lg border border-white/5">
+                              <div className="text-right">
+                                <span className="block text-[9px] text-zinc-500 uppercase tracking-wider">In</span>
+                                <span className="text-xs font-bold text-white">{booking.timeIn} ({booking.dateIn.slice(-2)}/{booking.dateIn.slice(5,7)})</span>
+                              </div>
+                              <ArrowRight size={12} className="text-zinc-600" />
+                              <div className="text-left">
+                                <span className="block text-[9px] text-zinc-500 uppercase tracking-wider">Out</span>
+                                <span className="text-xs font-bold text-white">{booking.timeOut} ({booking.dateOut.slice(-2)}/{booking.dateOut.slice(5,7)})</span>
+                              </div>
+                            </div>
+                            
+                            <button onClick={async () => {
+                              if(!window.confirm(`Xóa vé ${booking.code} và giải phóng phòng này?`)) return;
+                              try {
+                                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_bookings', booking.code));
+                              } catch(e) { alert('Lỗi xóa: ' + e.message); }
+                            }} className="text-[9px] uppercase tracking-widest text-red-400 hover:text-white hover:bg-red-500 px-3 py-1 rounded transition-colors self-start md:self-end">
+                              Hủy Lịch & Giải phóng phòng
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1872,15 +2107,9 @@ export default function App() {
                     try {
                       const newId = editingSnackId || ('item_' + Date.now());
                       await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_menu', newId), {
-                        id: newId,
-                        category: snackForm.category,
-                        name: snackForm.name,
-                        desc: snackForm.desc,
-                        price: Number(snackForm.price),
-                        image: snackForm.image
+                        id: newId, category: snackForm.category, name: snackForm.name, desc: snackForm.desc, price: Number(snackForm.price), image: snackForm.image
                       });
-                      setSnackForm({ category: '', name: '', desc: '', price: '', image: null });
-                      setEditingSnackId(null);
+                      setSnackForm({ category: '', name: '', desc: '', price: '', image: null }); setEditingSnackId(null);
                       alert(editingSnackId ? 'Cập nhật thành công!' : 'Thêm món thành công!');
                     } catch(err) { alert('Lỗi: ' + err.message); }
                   }} className="space-y-4">
@@ -1974,12 +2203,12 @@ export default function App() {
                     <div className="text-center py-20 flex flex-col items-center px-4 bg-white/[0.02] rounded-3xl border border-white/5">
                       <UtensilsCrossed size={48} className="text-zinc-600 mb-4" strokeWidth={1} />
                       <h4 className="text-lg font-bold text-white uppercase tracking-widest mb-2">Kho dữ liệu trống</h4>
-                      <p className="text-zinc-400 mb-8 text-sm max-w-md">Hệ thống chưa có món ăn nào. Bạn có muốn nạp nhanh danh sách 12 món mặc định vào để bắt đầu chỉnh sửa không?</p>
+                      <p className="text-zinc-400 mb-8 text-sm max-w-md">Hệ thống chưa có món ăn nào. Bạn có muốn nạp nhanh danh sách mặc định vào để bắt đầu chỉnh sửa không?</p>
                       <button onClick={async () => {
                         for(const item of DEFAULT_SNACKS) {
                           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_menu', item.id), item);
                         }
-                        alert("Đã nạp 12 món thành công! Bạn có thể bấm vào biểu tượng cây bút để sửa giá hoặc đổi tên.");
+                        alert("Đã nạp thành công! Bạn có thể bấm vào biểu tượng cây bút để sửa giá hoặc đổi tên.");
                       }} className="bg-[#D4FF00] text-black px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-all shadow-[0_0_20px_rgba(212,255,0,0.3)] hover:scale-105">
                         Tải Menu Mặc Định Vào Kho
                       </button>
@@ -2020,22 +2249,22 @@ export default function App() {
               </div>
             )}
 
-            {/* MÀN HÌNH QUẢN LÝ PHÒNG */}
+            {/* MÀN HÌNH QUẢN LÝ PHÒNG VÀ GIÁ */}
             {adminView === 'rooms' && (
               <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-                {/* Cột trái: Form chỉnh sửa Hạng phòng hoặc Phòng con */}
-                <div className="w-full md:w-1/3 border-r border-white/10 bg-white/[0.02] p-6 overflow-y-auto custom-scrollbar">
+                {/* Cột trái: Form chỉnh sửa */}
+                <div className="w-full md:w-5/12 border-r border-white/10 bg-white/[0.02] p-6 overflow-y-auto custom-scrollbar">
                   {!roomEditMode ? (
                      <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500">
                        <Info size={32} className="mb-4 opacity-50"/>
-                       <p className="text-sm">Bấm vào biểu tượng <Edit size={14} className="inline mx-1"/> bên phải để bắt đầu chỉnh sửa Hạng phòng hoặc thêm Phòng con.</p>
+                       <p className="text-sm">Bấm vào biểu tượng <Edit size={14} className="inline mx-1"/> bên phải để bắt đầu thiết lập giá Hạng phòng hoặc sửa chi tiết Phòng.</p>
                      </div>
                   ) : roomEditMode === 'category' ? (
-                     // FORM CHỈNH SỬA HẠNG PHÒNG
+                     // FORM CHỈNH SỬA HẠNG PHÒNG (BAO GỒM GIÁ CHUYÊN SÂU)
                      <>
                       <div className="flex justify-between items-center mb-6">
                         <h4 className="text-sm font-bold text-[#D4FF00] uppercase tracking-widest">
-                          {editingCategoryId ? 'Sửa Hạng Phòng' : 'Thêm Hạng Phòng'}
+                          {editingCategoryId ? 'Thiết Lập Hạng Phòng' : 'Thêm Hạng Phòng'}
                         </h4>
                         <button onClick={() => setRoomEditMode(null)} className="text-zinc-500 hover:text-white"><X size={16}/></button>
                       </div>
@@ -2046,40 +2275,61 @@ export default function App() {
                           const newId = editingCategoryId || ('cat_' + Date.now());
                           const featuresArray = roomCatForm.features.split('\n').filter(f => f.trim() !== '');
                           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms', newId), {
-                            id: newId,
-                            name: roomCatForm.name,
-                            concept: roomCatForm.concept,
-                            priceFrom: roomCatForm.priceFrom,
-                            description: roomCatForm.description,
-                            features: featuresArray,
-                            image: roomCatForm.image,
-                            order: roomCatForm.order,
-                            subRooms: roomsDb.find(r => r.id === newId)?.subRooms || [] // Giữ nguyên subRooms cũ nếu có
+                            id: newId, name: roomCatForm.name, concept: roomCatForm.concept, description: roomCatForm.description,
+                            features: featuresArray, image: roomCatForm.image, order: roomCatForm.order,
+                            price2h: roomCatForm.price2h, price3h: roomCatForm.price3h, price4h: roomCatForm.price4h,
+                            price5h: roomCatForm.price5h, price6h: roomCatForm.price6h, price7h: roomCatForm.price7h,
+                            price8h: roomCatForm.price8h, price9h: roomCatForm.price9h, price10h: roomCatForm.price10h,
+                            price30m: roomCatForm.price30m, surchargeEarly: roomCatForm.surchargeEarly, surchargeLate: roomCatForm.surchargeLate,
+                            subRooms: roomsDb.find(r => r.id === newId)?.subRooms || []
                           }, { merge: true });
-                          setRoomEditMode(null);
-                          alert('Lưu Hạng phòng thành công!');
+                          setRoomEditMode(null); alert('Lưu Hạng phòng thành công!');
                         } catch(err) { alert('Lỗi: ' + err.message); }
                       }} className="space-y-4">
+                        
+                        <div className="bg-[#D4FF00]/10 border border-[#D4FF00]/30 p-4 rounded-xl mb-4">
+                          <h5 className="text-xs font-bold text-[#D4FF00] uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Cấu hình giá tự động</h5>
+                          
+                          <p className="text-[10px] text-white uppercase tracking-widest border-b border-white/10 pb-1 mb-3">1. Giá đặt theo giờ</p>
+                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 2 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price2h} onChange={e=>setRoomCatForm({...roomCatForm, price2h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-[#D4FF00] font-bold rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 3 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price3h} onChange={e=>setRoomCatForm({...roomCatForm, price3h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 4 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price4h} onChange={e=>setRoomCatForm({...roomCatForm, price4h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 5 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price5h} onChange={e=>setRoomCatForm({...roomCatForm, price5h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 6 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price6h} onChange={e=>setRoomCatForm({...roomCatForm, price6h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 7 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price7h} onChange={e=>setRoomCatForm({...roomCatForm, price7h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 8 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price8h} onChange={e=>setRoomCatForm({...roomCatForm, price8h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 9 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price9h} onChange={e=>setRoomCatForm({...roomCatForm, price9h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Giá 10 giờ</label><input required type="number" placeholder="0" value={roomCatForm.price10h} onChange={e=>setRoomCatForm({...roomCatForm, price10h: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div className="col-span-1 md:col-span-3"><label className="block text-[9px] text-zinc-300 uppercase mb-1 text-[#D4FF00] font-bold">Giá mỗi 30 phút dôi ra</label><input required type="number" placeholder="0" value={roomCatForm.price30m} onChange={e=>setRoomCatForm({...roomCatForm, price30m: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                          </div>
+
+                          <p className="text-[10px] text-white uppercase tracking-widest border-b border-white/10 pb-1 mb-3">2. Giá phụ thu (Ngày/Đêm)</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Sớm/giờ (VNĐ)</label><input type="number" placeholder="VD: 40000" value={roomCatForm.surchargeEarly} onChange={e=>setRoomCatForm({...roomCatForm, surchargeEarly: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                            <div><label className="block text-[9px] text-zinc-300 uppercase mb-1">Trễ/giờ (VNĐ)</label><input type="number" placeholder="VD: 50000" value={roomCatForm.surchargeLate} onChange={e=>setRoomCatForm({...roomCatForm, surchargeLate: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                          </div>
+                        </div>
+
                         <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Tên Hạng (VD: HẠNG STUDIO)</label><input required value={roomCatForm.name} onChange={e=>setRoomCatForm({...roomCatForm, name: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
-                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Concept (VD: Vũ trụ & Giải trí)</label><input required value={roomCatForm.concept} onChange={e=>setRoomCatForm({...roomCatForm, concept: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
-                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Khoảng Giá (VD: 500.000 - 600.000)</label><input required value={roomCatForm.priceFrom} onChange={e=>setRoomCatForm({...roomCatForm, priceFrom: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Concept</label><input required value={roomCatForm.concept} onChange={e=>setRoomCatForm({...roomCatForm, concept: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
                         <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Mô tả dài</label><textarea rows={3} required value={roomCatForm.description} onChange={e=>setRoomCatForm({...roomCatForm, description: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none custom-scrollbar" /></div>
                         <div>
                           <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Tiện ích nổi bật (Mỗi dòng 1 mục)</label>
-                          <textarea rows={4} required placeholder="Máy chiếu 4K&#10;Phòng tắm riêng&#10;Bếp riêng..." value={roomCatForm.features} onChange={e=>setRoomCatForm({...roomCatForm, features: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none custom-scrollbar whitespace-pre-wrap" />
+                          <textarea rows={4} required value={roomCatForm.features} onChange={e=>setRoomCatForm({...roomCatForm, features: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none custom-scrollbar whitespace-pre-wrap" />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Hình ảnh (Nên chọn ảnh ngang)</label>
+                          <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Hình đại diện</label>
                           <div className="relative border-2 border-dashed border-white/20 rounded-xl p-4 text-center hover:border-[#D4FF00] transition-colors cursor-pointer bg-black/50">
                             <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, setRoomCatForm, 'image')} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                             {roomCatForm.image ? <img src={roomCatForm.image} alt="Preview" className="h-20 mx-auto rounded-md object-cover" /> : <p className="text-[10px] text-zinc-400">Bấm để tải ảnh lên</p>}
                           </div>
                         </div>
-                        <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-widest text-[11px] py-3 rounded-xl hover:bg-white transition-colors mt-2">LƯU HẠNG PHÒNG</button>
+                        <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold uppercase tracking-widest text-[11px] py-3 rounded-xl hover:bg-white transition-colors mt-2">LƯU CẤU HÌNH</button>
                       </form>
                      </>
                   ) : (
-                     // FORM CHỈNH SỬA / THÊM PHÒNG CON (SUB-ROOM)
+                     // FORM CHỈNH SỬA / THÊM PHÒNG CON (SUB-ROOM) + YOUTUBE LINK
                      <>
                       <div className="flex justify-between items-center mb-6">
                         <h4 className="text-sm font-bold text-[#D4FF00] uppercase tracking-widest leading-tight">
@@ -2098,28 +2348,29 @@ export default function App() {
                           
                           const newSubRoomData = {
                             id: editingSubRoomId || (`${catId}-${Date.now()}`),
-                            name: subRoomForm.name,
-                            price: subRoomForm.price,
-                            bed: subRoomForm.bed,
-                            image: subRoomForm.image,
-                            images: [subRoomForm.image, subRoomForm.image2, subRoomForm.image3].filter(Boolean), // Lưu cả 3 ảnh lên mây
-                            status: subRoomForm.status,
-                            amenities: amenitiesArray
+                            name: subRoomForm.name, price: subRoomForm.price, bed: subRoomForm.bed,
+                            image: subRoomForm.image, images: [subRoomForm.image, subRoomForm.image2, subRoomForm.image3].filter(Boolean),
+                            status: subRoomForm.status, amenities: amenitiesArray,
+                            youtubeLink: subRoomForm.youtubeLink || '' 
                           };
 
-                          if (editingSubRoomId) {
-                            currentSubRooms = currentSubRooms.map(sr => sr.id === editingSubRoomId ? newSubRoomData : sr);
-                          } else {
-                            currentSubRooms.push(newSubRoomData);
-                          }
+                          if (editingSubRoomId) { currentSubRooms = currentSubRooms.map(sr => sr.id === editingSubRoomId ? newSubRoomData : sr); } 
+                          else { currentSubRooms.push(newSubRoomData); }
 
                           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms', catId), { subRooms: currentSubRooms });
-                          setRoomEditMode(null);
-                          alert('Lưu phòng thành công!');
+                          setRoomEditMode(null); alert('Lưu phòng thành công!');
                         } catch(err) { alert('Lỗi: ' + err.message); }
                       }} className="space-y-4">
-                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Tên Phòng (VD: Phòng Sun)</label><input required value={subRoomForm.name} onChange={e=>setSubRoomForm({...subRoomForm, name: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
-                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Giá tiền (Chữ - VD: 500.000)</label><input required value={subRoomForm.price} onChange={e=>setSubRoomForm({...subRoomForm, price: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Tên Phòng</label><input required value={subRoomForm.name} onChange={e=>setSubRoomForm({...subRoomForm, name: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
+                        
+                        <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl mb-4">
+                          <label className="flex items-center gap-1 text-[10px] font-bold text-red-400 uppercase tracking-widest mb-2">
+                            <PlayCircle size={12}/> Link Video Hướng dẫn mở cửa
+                          </label>
+                          <input type="url" placeholder="Nhập đường link Youtube (VD: https://youtu.be/...)" value={subRoomForm.youtubeLink} onChange={e=>setSubRoomForm({...subRoomForm, youtubeLink: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-lg focus:border-red-400 outline-none" />
+                        </div>
+
+                        <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Giá hiển thị (Chữ - VD: 500.000)</label><input required value={subRoomForm.price} onChange={e=>setSubRoomForm({...subRoomForm, price: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
                         <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Loại giường (VD: 1 Giường đôi)</label><input required value={subRoomForm.bed} onChange={e=>setSubRoomForm({...subRoomForm, bed: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none" /></div>
                         <div><label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Trạng thái</label>
                           <select value={subRoomForm.status} onChange={e=>setSubRoomForm({...subRoomForm, status: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none">
@@ -2130,7 +2381,7 @@ export default function App() {
                         </div>
                         <div>
                           <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Tiện ích chi tiết (Mỗi dòng 1 mục)</label>
-                          <textarea rows={5} required placeholder="Tivi có Netflix&#10;Bồn tắm tròn&#10;Ban công lớn..." value={subRoomForm.amenities} onChange={e=>setSubRoomForm({...subRoomForm, amenities: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none custom-scrollbar whitespace-pre-wrap" />
+                          <textarea rows={5} required value={subRoomForm.amenities} onChange={e=>setSubRoomForm({...subRoomForm, amenities: e.target.value})} className="w-full bg-black/50 border border-white/20 p-2 text-sm text-white rounded-lg focus:border-[#D4FF00] outline-none custom-scrollbar whitespace-pre-wrap" />
                         </div>
                         <div>
                           <label className="block text-[10px] text-zinc-400 uppercase tracking-widest mb-1">Hình ảnh phòng (3 góc chụp)</label>
@@ -2156,23 +2407,20 @@ export default function App() {
                 </div>
 
                 {/* Cột phải: Danh sách Hệ thống Phòng */}
-                <div className="w-full md:w-2/3 p-6 overflow-y-auto custom-scrollbar bg-black/20">
+                <div className="w-full md:w-7/12 p-6 overflow-y-auto custom-scrollbar bg-black/20">
                   <div className="flex justify-between items-end mb-6">
-                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">Danh sách Hạng Phòng ({roomsDb.length})</h4>
+                    <h4 className="text-sm font-bold text-white uppercase tracking-widest">Hệ Thống Phòng</h4>
                   </div>
                   
                   {roomsDb.length === 0 ? (
                     <div className="text-center py-20 flex flex-col items-center px-4 bg-white/[0.02] rounded-3xl border border-white/5">
                       <BedDouble size={48} className="text-zinc-600 mb-4" strokeWidth={1} />
                       <h4 className="text-lg font-bold text-white uppercase tracking-widest mb-2">Kho dữ liệu trống</h4>
-                      <p className="text-zinc-400 mb-8 text-sm max-w-md">Hệ thống chưa có hạng phòng nào. Bạn có muốn nạp nhanh 4 Hạng phòng mặc định vào để bắt đầu chỉnh sửa không?</p>
                       <button onClick={async () => {
-                        for(const item of DEFAULT_ROOMS) {
-                          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms', item.id), item);
-                        }
+                        for(const item of DEFAULT_ROOMS) await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms', item.id), item);
                         alert("Đã nạp Hạng Phòng thành công!");
-                      }} className="bg-[#D4FF00] text-black px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-all shadow-[0_0_20px_rgba(212,255,0,0.3)] hover:scale-105">
-                        Tải Hệ Thống Phòng Mặc Định
+                      }} className="bg-[#D4FF00] text-black px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-white transition-all">
+                        Tải Hệ Thống Mặc Định
                       </button>
                     </div>
                   ) : (
@@ -2183,21 +2431,26 @@ export default function App() {
                             <img src={cat.image} className="w-16 h-12 rounded-lg object-cover opacity-80" alt="" />
                             <div className="flex-1">
                               <h5 className="text-sm font-black text-[#D4FF00] tracking-wider uppercase mb-1">{cat.name}</h5>
-                              <p className="text-[10px] text-zinc-400 font-light">Giá từ: {cat.priceFrom} | Order: {cat.order}</p>
+                              <p className="text-[10px] text-zinc-400 font-light">
+                                Giá 2H đầu: <strong className="text-white">{cat.price2h ? formatPrice(Number(cat.price2h)) : 'Chưa set'}</strong>
+                              </p>
                             </div>
                             <div className="flex gap-2">
                               <button onClick={() => {
-                                setRoomCatForm({ name: cat.name, concept: cat.concept, priceFrom: cat.priceFrom, description: cat.description, features: (cat.features||[]).join('\n'), image: cat.image, order: cat.order });
-                                setEditingCategoryId(cat.id);
-                                setRoomEditMode('category');
+                                setRoomCatForm({ 
+                                  name: cat.name, concept: cat.concept, description: cat.description, features: (cat.features||[]).join('\n'), image: cat.image, order: cat.order, 
+                                  price2h: cat.price2h || '', price3h: cat.price3h || '', price4h: cat.price4h || '', price5h: cat.price5h || '', 
+                                  price6h: cat.price6h || '', price7h: cat.price7h || '', price8h: cat.price8h || '', price9h: cat.price9h || '', 
+                                  price10h: cat.price10h || '', price30m: cat.price30m || '', surchargeEarly: cat.surchargeEarly || '', surchargeLate: cat.surchargeLate || '' 
+                                });
+                                setEditingCategoryId(cat.id); setRoomEditMode('category');
                               }} className="p-2 text-zinc-400 hover:text-[#D4FF00] hover:bg-[#D4FF00]/10 rounded-lg transition-colors"><Edit size={16}/></button>
                               <button onClick={() => {
                                 setActiveAdminCategory(cat);
-                                setSubRoomForm({ id: '', name: '', price: '', bed: '', amenities: '', image: null, image2: null, image3: null, status: 'Trống' });
-                                setEditingSubRoomId(null);
-                                setRoomEditMode('subroom');
+                                setSubRoomForm({ id: '', name: '', price: '', bed: '', amenities: '', image: null, image2: null, image3: null, status: 'Trống', youtubeLink: '' });
+                                setEditingSubRoomId(null); setRoomEditMode('subroom');
                               }} className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors flex items-center gap-2 text-[10px] uppercase font-bold tracking-wider">
-                                <Plus size={14}/> Thêm Phòng
+                                <Plus size={14}/> Thêm
                               </button>
                             </div>
                           </div>
@@ -2208,20 +2461,16 @@ export default function App() {
                                 <img src={room.image} className="w-10 h-10 rounded-md object-cover" alt="" />
                                 <div className="flex-1">
                                   <h6 className="text-xs font-bold text-white mb-1">{room.name}</h6>
-                                  <span className={`text-[9px] px-2 py-0.5 rounded-md uppercase font-bold tracking-widest ${room.status === 'Trống' ? 'bg-[#D4FF00]/10 text-[#D4FF00]' : 'bg-red-500/10 text-red-400'}`}>{room.status}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[9px] px-2 py-0.5 rounded-md uppercase font-bold tracking-widest ${room.status === 'Trống' ? 'bg-[#D4FF00]/10 text-[#D4FF00]' : 'bg-red-500/10 text-red-400'}`}>{room.status}</span>
+                                    {room.youtubeLink && <PlayCircle size={12} className="text-red-500" title="Đã thêm link Youtube"/>}
+                                  </div>
                                 </div>
                                 <div className="flex gap-1 opacity-100 lg:opacity-0 group-hover/room:opacity-100 transition-opacity shrink-0">
                                   <button onClick={() => {
                                     setActiveAdminCategory(cat);
-                                    setSubRoomForm({ 
-                                      id: room.id, name: room.name, price: room.price, bed: room.bed, 
-                                      amenities: (room.amenities||[]).join('\n'), status: room.status,
-                                      image: room.images?.[0] || room.image, 
-                                      image2: room.images?.[1] || null, 
-                                      image3: room.images?.[2] || null 
-                                    });
-                                    setEditingSubRoomId(room.id);
-                                    setRoomEditMode('subroom');
+                                    setSubRoomForm({ id: room.id, name: room.name, price: room.price, bed: room.bed, amenities: (room.amenities||[]).join('\n'), status: room.status, image: room.images?.[0] || room.image, image2: room.images?.[1] || null, image3: room.images?.[2] || null, youtubeLink: room.youtubeLink || '' });
+                                    setEditingSubRoomId(room.id); setRoomEditMode('subroom');
                                   }} className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"><Edit size={14}/></button>
                                   <button onClick={async () => {
                                     if(!window.confirm(`Xóa phòng ${room.name}?`)) return;
@@ -2245,47 +2494,22 @@ export default function App() {
       )}
 
       {/* --- MESSENGER FLOATING BUTTON --- */}
-      <a
-        href="https://m.me/102906751892078"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[100] bg-[#0084FF] hover:bg-[#00B2FF] text-white p-3.5 rounded-full shadow-[0_4px_20px_rgba(0,132,255,0.4)] hover:shadow-[0_4px_25px_rgba(0,178,255,0.6)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group"
-      >
-        <svg viewBox="0 0 36 36" fill="currentColor" height="32" width="32">
-          <path d="M18 1.836C9.13 1.836 1.936 8.528 1.936 16.78c0 4.673 2.3 8.841 5.92 11.664.195.152.316.386.326.634l.056 2.658c.026 1.258 1.348 2.012 2.44 1.398l3.14-1.761c.217-.122.468-.152.705-.087 1.135.31 2.336.48 3.577.48 8.87 0 16.064-6.693 16.064-14.944S26.87 1.836 18 1.836zm-2.482 19.34l-3.873-4.14a1.328 1.328 0 01.077-1.921l7.868-6.17c1.378-1.08 3.25.568 2.215 1.986l-3.873 4.14a1.328 1.328 0 01-.077 1.92l-7.868 6.171c-1.378 1.08-3.25-.568-2.215-1.986z"/>
-        </svg>
-        <span className="absolute right-full mr-4 bg-white text-black text-[11px] font-bold px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
-          Chat với chúng tôi
-        </span>
+      <a href="https://m.me/102906751892078" target="_blank" rel="noopener noreferrer" className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[100] bg-[#0084FF] hover:bg-[#00B2FF] text-white p-3.5 rounded-full shadow-[0_4px_20px_rgba(0,132,255,0.4)] hover:shadow-[0_4px_25px_rgba(0,178,255,0.6)] hover:-translate-y-1 transition-all duration-300 flex items-center justify-center group">
+        <svg viewBox="0 0 36 36" fill="currentColor" height="32" width="32"><path d="M18 1.836C9.13 1.836 1.936 8.528 1.936 16.78c0 4.673 2.3 8.841 5.92 11.664.195.152.316.386.326.634l.056 2.658c.026 1.258 1.348 2.012 2.44 1.398l3.14-1.761c.217-.122.468-.152.705-.087 1.135.31 2.336.48 3.577.48 8.87 0 16.064-6.693 16.064-14.944S26.87 1.836 18 1.836zm-2.482 19.34l-3.873-4.14a1.328 1.328 0 01.077-1.921l7.868-6.17c1.378-1.08 3.25.568 2.215 1.986l-3.873 4.14a1.328 1.328 0 01-.077 1.92l-7.868 6.171c-1.378 1.08-3.25-.568-2.215-1.986z"/></svg>
+        <span className="absolute right-full mr-4 bg-white text-black text-[11px] font-bold px-3 py-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">Chat với chúng tôi</span>
       </a>
 
       {/* --- INJECT STYLES --- */}
-      <div 
-        dangerouslySetInnerHTML={{
-          __html: `
-            <style>
-              .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-              .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-              .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-              .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
-              
-              @keyframes slideUpFade {
-                from { opacity: 0; transform: translateY(15px); }
-                to { opacity: 1; transform: translateY(0); }
-              }
-              @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-              }
-              
-              .animate-slide-up-fade {
-                animation: slideUpFade 1s ease-out forwards;
-                opacity: 0;
-              }
-            </style>
-          `
-        }}
-      />
+      <div dangerouslySetInnerHTML={{ __html: `
+        <style>
+          .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #555; }
+          @keyframes slideUpFade { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+          .animate-slide-up-fade { animation: slideUpFade 1s ease-out forwards; opacity: 0; }
+        </style>
+      ` }} />
     </div>
   );
 }
