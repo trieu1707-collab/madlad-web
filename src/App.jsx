@@ -890,6 +890,133 @@ export default function App() {
         </div>
       </section>
 
+      {/* --- ROOM LIST MODAL --- */}
+      {selectedCategory && (
+        <div className="fixed inset-0 z-[105] flex items-center justify-center p-4 md:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedCategory(null)}></div>
+          <div className="w-full max-w-5xl bg-[#0a0a0a] border border-white/20 shadow-2xl rounded-3xl relative z-10 animate-in fade-in overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 md:p-8 border-b border-white/10 flex justify-between items-start shrink-0 bg-black/50">
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#D4FF00] mb-2">Danh sách phòng</h3>
+                <h4 className="text-2xl md:text-3xl font-black uppercase text-white tracking-tight">{selectedCategory.name}</h4>
+              </div>
+              <button onClick={() => setSelectedCategory(null)} className="text-zinc-500 hover:text-white p-2"><X size={24} /></button>
+            </div>
+            <div className="p-6 md:p-8 overflow-y-auto flex-1 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {(selectedCategory.subRooms || []).map((room) => (
+                  <div key={room.id} className="flex flex-col bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-[#D4FF00]/40 transition-all group">
+                    <div className="relative h-48 w-full overflow-hidden shrink-0"><img src={room.image} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /></div>
+                    <div className="p-5 flex flex-col flex-1 justify-between bg-black/20">
+                      <div className="mb-4">
+                        <div className="flex justify-between items-center gap-2">
+                          <h5 className="text-lg font-bold text-white group-hover:text-[#D4FF00] transition-colors leading-tight line-clamp-2">{room.name}</h5>
+                          <button onClick={() => setViewingRoom(room)} className="text-[8px] font-bold text-[#D4FF00] uppercase tracking-widest hover:underline flex items-center gap-1 shrink-0 opacity-80 hover:opacity-100 transition-opacity">
+                            Chi tiết <ChevronRight size={10} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-white/10 mt-auto">
+                        <p className="text-base font-serif italic text-[#D4FF00]">{room.price} VNĐ</p>
+                        <button disabled={room.status !== 'Trống'} onClick={() => { setSelectedCategory(null); setBookingModalOpen(true); }} className={`text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-2.5 rounded-xl ${room.status === 'Trống' ? 'bg-white text-black hover:bg-[#D4FF00]' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'}`}>Đặt Ngay</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ROOM DETAILS MODAL (Chi tiết phòng) --- */}
+      {viewingRoom && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={() => setViewingRoom(null)}></div>
+          <div className="w-full max-w-3xl bg-[#0a0a0a] border border-white/20 shadow-2xl rounded-3xl relative z-10 animate-in fade-in zoom-in-95 overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="relative h-64 sm:h-[400px] w-full shrink-0 flex gap-1 p-1 bg-black rounded-t-3xl">
+              {(() => {
+                const img1 = viewingRoom.images?.[0] || viewingRoom.image;
+                const img2 = viewingRoom.images?.[1] || viewingRoom.image2;
+                const img3 = viewingRoom.images?.[2] || viewingRoom.image3;
+
+                if (img2 && img3) {
+                  return (
+                    <>
+                      <div className="flex-2 w-2/3 relative rounded-tl-2xl overflow-hidden group">
+                        <img src={img1} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={viewingRoom.name} />
+                      </div>
+                      <div className="flex-1 w-1/3 flex flex-col gap-1">
+                        <div className="h-1/2 relative rounded-tr-2xl overflow-hidden group">
+                          <img src={img2} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={viewingRoom.name} />
+                        </div>
+                        <div className="h-1/2 relative overflow-hidden group">
+                          <img src={img3} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={viewingRoom.name} />
+                        </div>
+                      </div>
+                    </>
+                  );
+                } else {
+                  return (
+                    <div className="w-full h-full relative rounded-t-2xl overflow-hidden group">
+                      <img src={img1} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={viewingRoom.name} />
+                    </div>
+                  );
+                }
+              })()}
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent pointer-events-none z-10"></div>
+              <button onClick={() => setViewingRoom(null)} className="absolute top-4 right-4 bg-black/50 text-white hover:text-[#D4FF00] hover:bg-black/80 p-2 rounded-full backdrop-blur-md transition-colors z-20"><X size={20}/></button>
+              <div className="absolute bottom-0 left-0 w-full p-6 md:p-8 z-20">
+                <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#D4FF00] mb-2 block drop-shadow-md">{selectedCategory?.name}</span>
+                <h3 className="text-3xl sm:text-4xl font-black uppercase text-white tracking-tight drop-shadow-lg">{viewingRoom.name}</h3>
+              </div>
+            </div>
+            
+            <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 bg-black/40">
+              <div className="flex flex-wrap gap-4 mb-8">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex-1 min-w-[150px]">
+                  <span className="block text-[9px] text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-1"><MonitorPlay size={12}/> Giá Phòng / Đêm</span>
+                  <span className="text-lg font-bold text-[#D4FF00] font-serif italic">{viewingRoom.price} VNĐ</span>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-5 flex-1 min-w-[150px]">
+                  <span className="block text-[9px] text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-1"><BedDouble size={12}/> Loại Giường</span>
+                  <span className="text-sm font-bold text-white">{viewingRoom.bed || '1 Giường đôi'}</span>
+                </div>
+              </div>
+
+              <h4 className="text-xs font-bold text-white uppercase tracking-widest mb-5 flex items-center gap-2">
+                <Sparkles size={16} className="text-[#D4FF00]"/> Tiện ích chi tiết
+              </h4>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 mb-8 bg-white/5 p-6 rounded-2xl border border-white/10">
+                {(viewingRoom.amenities || []).map((amn, i) => (
+                  <li key={i} className="flex items-start text-sm font-light text-zinc-300 gap-3">
+                    <CheckCircle size={16} className="text-[#D4FF00] shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{amn}</span>
+                  </li>
+                ))}
+                {(!viewingRoom.amenities || viewingRoom.amenities.length === 0) && (
+                  <p className="text-xs text-zinc-500 italic col-span-2">Đang cập nhật tiện ích...</p>
+                )}
+              </ul>
+
+              <button 
+                disabled={viewingRoom.status !== 'Trống'} 
+                onClick={() => { 
+                  setViewingRoom(null); 
+                  setSelectedCategory(null); 
+                  setBookingModalOpen(true); 
+                }} 
+                className={`w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all flex justify-center items-center gap-2 ${viewingRoom.status === 'Trống' ? 'bg-[#D4FF00] text-black hover:bg-white shadow-[0_0_20px_rgba(212,255,0,0.2)] hover:scale-[1.02]' : 'bg-zinc-800 text-zinc-500 cursor-not-allowed'}`}
+              >
+                {viewingRoom.status === 'Trống' ? <><Calendar size={16}/> Đặt Phòng Này</> : 'Phòng Đang Được Dọn / Bảo Trì'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* --- MODAL: BOOKING --- */}
       {bookingModalOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
