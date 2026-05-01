@@ -4,7 +4,7 @@ import {
   MonitorPlay, Gamepad2, Bath, ChevronRight, Info,
   Bike, Map, AlertTriangle, Sparkles, ArrowUpRight,
   ShoppingCart, Plus, Minus, Trash2, UtensilsCrossed, ArrowLeft, ArrowRight, BedDouble, Clock, QrCode, User, Search, Shirt,
-  Filter, ChevronDown, UploadCloud, ImageIcon, Settings, Lock, Edit, PlayCircle
+  Filter, ChevronDown, UploadCloud, ImageIcon, Settings, Lock, Edit, PlayCircle, Tag, Ticket
 } from 'lucide-react';
 
 // --- FIREBASE CLOUD STORAGE IMPORTS ---
@@ -27,23 +27,26 @@ const FOOD_BANK_OWNER = 'HO KINH DOANH MAD STATION'; // Tên chủ tài khoản 
 // --- KHỞI TẠO CLOUD DATABASE ---
 let db, auth, appId;
 try {
+  // LƯU Ý KHI MANG VỀ VS CODE: 
+  // Bạn hãy thay các chuỗi rỗng "" bằng cú pháp import.meta.env.VITE_... tương ứng với file .env
   const LOCAL_FIREBASE_CONFIG = {
-    apiKey: "AIzaSyBsYRhkHpybjB822e9viDxS_gFb-YQedow",
-    authDomain: "madlad-space.firebaseapp.com",
-    projectId: "madlad-space",
-    storageBucket: "madlad-space.firebasestorage.app",
-    messagingSenderId: "826338141212",
-    appId: "1:826338141212:web:a72fec438e972178792bd9"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "", 
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || ""
   };
 
-  const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config
-    ? JSON.parse(__firebase_config) 
-    : LOCAL_FIREBASE_CONFIG;
+  const firebaseConfig = LOCAL_FIREBASE_CONFIG.apiKey !== "" 
+    ? LOCAL_FIREBASE_CONFIG 
+    : (typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : LOCAL_FIREBASE_CONFIG);
 
   const app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
-  appId = typeof __app_id !== 'undefined' ? __app_id : 'madlad-space-local';
+  
+  appId = LOCAL_FIREBASE_CONFIG.projectId !== "" ? LOCAL_FIREBASE_CONFIG.projectId : (typeof __app_id !== 'undefined' ? __app_id : 'madlad-space-local');
 } catch (error) {
   console.error('Lỗi khởi tạo hệ thống Cloud:', error);
 }
@@ -88,7 +91,7 @@ const LiquidBackground = ({ opacity }) => {
   );
 };
 
-// --- DATA MẶC ĐỊNH ĐÃ ĐƯỢC KHÔI PHỤC HOÀN TOÀN ---
+// --- DATA MẶC ĐỊNH ---
 const DEFAULT_ROOMS = [
   {
     id: 'studio', order: 1, name: 'HẠNG STUDIO', concept: 'Vũ trụ & Giải trí', image: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80', priceFrom: '500.000 - 600.000',
@@ -216,7 +219,6 @@ const generatePasscode = (dob) => {
   if (!dob) return Math.floor(1000 + Math.random() * 9000).toString() + '#';
   const cleanDob = dob.replace(/\D/g, ''); 
   if (cleanDob.length === 8) {
-    // Lấy Ngày Tháng + Năm sinh (bỏ đi số thứ 2) => DDMM Y(Y)YY => 1707 2(0)00 => 1707200#
     return `${cleanDob.slice(0,4)}${cleanDob[4]}${cleanDob.slice(6,8)}#`;
   }
   return Math.floor(1000 + Math.random() * 9000).toString() + '#';
@@ -275,6 +277,7 @@ export default function App() {
   const [globalSettings, setGlobalSettings] = useState({ holidayStart: '', holidayEnd: '', surchargeHourlyPct: '', surchargeDailyVnd: '' });
   const [snacksDb, setSnacksDb] = useState([]);
   const [roomsDb, setRoomsDb] = useState([]); 
+  const [promosDb, setPromosDb] = useState([]); 
   const bookingsDbRef = useRef(bookingsDb);
 
   // --- APP STATE ---
@@ -301,10 +304,15 @@ export default function App() {
   const [finalBookingData, setFinalBookingData] = useState(null);
   const [pendingBookingCode, setPendingBookingCode] = useState('');
   const [pendingFoodOrderId, setPendingFoodOrderId] = useState('');
+  
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState('');
 
   const [guestFormError, setGuestFormError] = useState(''); 
   const [authFormError, setAuthFormError] = useState(''); 
   const [isCheckingCCCD, setIsCheckingCCCD] = useState(false);
+  const [isDobUnlocked, setIsDobUnlocked] = useState(false);
 
   const [searchCode, setSearchCode] = useState('');
   const [searchResult, setSearchResult] = useState(null);
@@ -330,6 +338,9 @@ export default function App() {
   const [adminFilterCategory, setAdminFilterCategory] = useState('Tất cả'); 
   const [roomEditMode, setRoomEditMode] = useState(null); 
   const [activeAdminCategory, setActiveAdminCategory] = useState(null); 
+  
+  const [promoForm, setPromoForm] = useState({ code: '', type: 'quantity', discountType: 'fixed', discountValue: '', limit: '', startDate: '', endDate: '' });
+
   const [roomCatForm, setRoomCatForm] = useState({ name: '', concept: '', priceFrom: '', description: '', features: '', image: null, order: 0, price2h: '', price3h: '', price4h: '', price5h: '', price6h: '', price7h: '', price8h: '', price9h: '', price10h: '', price30m: '', surchargeEarly: '', surchargeLate: '' });
   const [subRoomForm, setSubRoomForm] = useState({ id: '', name: '', price: '', bed: '', amenities: '', image: null, image2: null, image3: null, status: 'Trống', youtubeLink: '' });
   const [editingCategoryId, setEditingCategoryId] = useState(null);
@@ -378,7 +389,8 @@ export default function App() {
     const unsubMenu = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_menu'), (snapshot) => setSnacksDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), () => {});
     const unsubRooms = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_rooms'), (snapshot) => setRoomsDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.order - b.order)), () => {});
     const unsubSettings = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_settings', 'global'), (docSnap) => { if (docSnap.exists()) setGlobalSettings(docSnap.data()); }, () => {});
-    return () => { unsubBookings(); unsubAccounts(); unsubMenu(); unsubRooms(); unsubSettings(); };
+    const unsubPromos = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'madlad_promos'), (snapshot) => setPromosDb(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), () => {});
+    return () => { unsubBookings(); unsubAccounts(); unsubMenu(); unsubRooms(); unsubSettings(); unsubPromos(); };
   }, [fbUser]);
 
   useEffect(() => { bookingsDbRef.current = bookingsDb; }, [bookingsDb]);
@@ -417,6 +429,10 @@ export default function App() {
       setPendingBookingCode('');
       setGuestFormError('');
       if (!currentUser) setGuestInfo({ name: '', dob: '', phone: '', cccdImage: null });
+      setPromoInput('');
+      setAppliedPromo(null);
+      setPromoError('');
+      setIsDobUnlocked(false);
     }
   }, [bookingModalOpen, currentUser]);
 
@@ -452,7 +468,8 @@ export default function App() {
       await signInWithEmailAndPassword(auth, adminLogin.email, adminLogin.password);
       setAdminView('select');
     } catch (error) {
-      showAlert('Xác thực thất bại! Sai Email hoặc Mật khẩu.');
+      console.error("Lỗi đăng nhập Admin:", error);
+      showAlert(`Xác thực thất bại! ${error.message}`);
     }
   };
 
@@ -467,6 +484,7 @@ export default function App() {
 
   // --- OCR AI & UPLOADS ---
   const extractDOBWithAI = async (base64Data) => {
+    // Lấy API Key từ file .env (ở VS Code, thay "" bằng: import.meta.env.VITE_GEMINI_API_KEY)
     const apiKey = ""; 
     const prompt = `Bạn là AI đọc thẻ CCCD/CMND Việt Nam. Trích xuất Ngày sinh dạng DD/MM/YYYY. Nếu không phải thẻ, trả về INVALID.`;
     try {
@@ -483,6 +501,7 @@ export default function App() {
     const file = e.target.files[0];
     if (!file) return;
     setIsCheckingCCCD(true);
+    setIsDobUnlocked(false);
     errorSetter('');
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -493,17 +512,27 @@ export default function App() {
         canvas.width = 800; canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, 800, canvas.height);
         const base64 = canvas.toDataURL('image/jpeg', 0.7);
+        
         const aiDob = await extractDOBWithAI(base64);
         setIsCheckingCCCD(false);
+        
         if (aiDob === "INVALID" || aiDob.length < 8) {
-          errorSetter("AI TỪ CHỐI: Ảnh không hợp lệ hoặc mờ.");
-          e.target.value = '';
+          errorSetter("Hệ thống AI không nhận diện được ngày sinh. Vui lòng tự nhập tay ngày sinh (DD/MM/YYYY) vào ô bên trên.");
+          setter(prev => ({ ...prev, cccdImage: base64 }));
+          setIsDobUnlocked(true);
         } else {
           let cleanDob = aiDob.replace(/\D/g, '');
           if (cleanDob.length >= 8) cleanDob = `${cleanDob.slice(0,2)}/${cleanDob.slice(2,4)}/${cleanDob.slice(4,8)}`;
           const check = validateDobForm(cleanDob);
-          if (check !== "OK") { errorSetter(`AI Cảnh báo: ${check}`); e.target.value = ''; }
-          else { setter(prev => ({ ...prev, cccdImage: base64, dob: cleanDob })); }
+          if (check !== "OK") { 
+             errorSetter(`AI Cảnh báo: ${check}. Vui lòng tự chỉnh sửa lại ngày sinh cho đúng.`); 
+             setter(prev => ({ ...prev, cccdImage: base64, dob: cleanDob }));
+             setIsDobUnlocked(true);
+          }
+          else { 
+             setter(prev => ({ ...prev, cccdImage: base64, dob: cleanDob })); 
+             setIsDobUnlocked(false);
+          }
         }
       };
       img.src = ev.target.result;
@@ -517,6 +546,14 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = (ev) => { setter(prev => ({ ...prev, [field]: ev.target.result })); };
     reader.readAsDataURL(file);
+  };
+
+  const formatDobInput = (val) => {
+    let clean = val.replace(/\D/g, '');
+    if (clean.length > 8) clean = clean.slice(0, 8);
+    if (clean.length > 4) return `${clean.slice(0,2)}/${clean.slice(2,4)}/${clean.slice(4)}`;
+    if (clean.length > 2) return `${clean.slice(0,2)}/${clean.slice(2)}`;
+    return clean;
   };
 
   const validateDobForm = (dob) => {
@@ -593,6 +630,8 @@ export default function App() {
 
           if (isActuallyFree) {
             let price = 0; const type = bookingForm.type, guests = bookingForm.guests;
+            let earlyHours = 0, lateHours = 0, earlyFee = 0, lateFee = 0;
+            
             if (cat.price2h && type === 'hourly') {
                 const hourlyPrices = { 2: cat.price2h, 3: cat.price3h, 4: cat.price4h, 5: cat.price5h, 6: cat.price6h, 7: cat.price7h, 8: cat.price8h, 9: cat.price9h, 10: cat.price10h };
                 let baseH = exactHours > 10 ? 10 : exactHours;
@@ -615,6 +654,8 @@ export default function App() {
                   else { let p = 140000; if(exactHours>2)p+=(Math.min(exactHours,5)-2)*20000; if(exactHours>=6)p+=10000; if(exactHours>6)p+=(Math.min(exactHours,10)-6)*20000; price = Math.min(p, 270000); }
                 }
             }
+            
+            let basePrice = price;
 
             if ((type === 'daily' || type === 'overnight') && (cat.surchargeEarly || cat.surchargeLate)) {
                  const [hIn, mIn] = bookingForm.timeIn.split(':').map(Number);
@@ -622,21 +663,38 @@ export default function App() {
                  let earlyMins = 0;
                  if (type === 'overnight' && hIn >= 6 && hIn < 22) earlyMins = (22 * 60) - (hIn * 60 + mIn);
                  else if (type === 'daily' && hIn >= 6 && hIn < 14) earlyMins = (14 * 60) - (hIn * 60 + mIn);
-                 if (earlyMins > 0 && cat.surchargeEarly) price += Math.ceil(earlyMins / 60) * Number(cat.surchargeEarly);
+                 
+                 if (earlyMins > 0 && cat.surchargeEarly) {
+                    earlyHours = Math.ceil(earlyMins / 60);
+                    earlyFee = earlyHours * Number(cat.surchargeEarly);
+                    price += earlyFee;
+                 }
 
                  let lateMins = 0;
                  if (type === 'overnight' && (hOut > 10 || (hOut === 10 && mOut > 0))) lateMins = (hOut * 60 + mOut) - (10 * 60);
                  else if (type === 'daily' && (hOut > 12 || (hOut === 12 && mOut > 0))) lateMins = (hOut * 60 + mOut) - (12 * 60);
-                 if (lateMins > 0 && cat.surchargeLate) price += Math.ceil(lateMins / 60) * Number(cat.surchargeLate);
+                 
+                 if (lateMins > 0 && cat.surchargeLate) {
+                    lateHours = Math.ceil(lateMins / 60);
+                    lateFee = lateHours * Number(cat.surchargeLate);
+                    price += lateFee;
+                 }
             }
 
+            let holidayFee = 0;
             if (isHoliday) {
-                 if (type === 'hourly') price += Math.round(price * (Number(globalSettings.surchargeHourlyPct || 0) / 100));
-                 else price += Number(globalSettings.surchargeDailyVnd || 0) * diffDays;
+                 if (type === 'hourly') holidayFee = Math.round(price * (Number(globalSettings.surchargeHourlyPct || 0) / 100));
+                 else holidayFee = Number(globalSettings.surchargeDailyVnd || 0) * diffDays;
+                 price += holidayFee;
             }
 
             if (guests >= 3 && cat.id !== 'studio') isActuallyFree = false;
-            if (isActuallyFree) results.push({ ...room, categoryName: cat.name, totalPrice: price, youtubeLink: room.youtubeLink || '' });
+            if (isActuallyFree) {
+                results.push({ 
+                  ...room, categoryName: cat.name, totalPrice: price, youtubeLink: room.youtubeLink || '',
+                  breakdown: { basePrice, earlyHours, earlyFee, lateHours, lateFee, holidayFee, exactHours, exactMins, diffDays, earlyRate: cat.surchargeEarly, lateRate: cat.surchargeLate }
+                });
+            }
           }
         }
       });
@@ -644,12 +702,15 @@ export default function App() {
     setAvailableRooms(results); setBookingView('results');
   };
 
-  const createPendingDoc = async (code, guest, room) => {
+  const createPendingDoc = async (code, guest, room, finalDiscountedPrice, appliedPromoCode) => {
     const passcode = generatePasscode(guest.dob);
     const dateOutVal = bookingForm.type === 'hourly' ? bookingForm.dateIn : bookingForm.dateOut;
     const data = {
       code, passcode, status: 'pending', roomName: room.name, categoryName: room.categoryName, roomKey: room.id.split('-').pop().toLowerCase(),
-      totalPrice: room.totalPrice, guestData: guest, dateIn: bookingForm.dateIn, timeIn: bookingForm.timeIn,
+      totalPrice: finalDiscountedPrice, 
+      originalPrice: room.totalPrice,
+      promoCode: appliedPromoCode || null,
+      guestData: guest, dateIn: bookingForm.dateIn, timeIn: bookingForm.timeIn,
       dateOut: dateOutVal, timeOut: bookingForm.timeOut, type: bookingForm.type, accountId: currentUser ? currentUser.username : 'guest',
       isoStart: `${bookingForm.dateIn}T${bookingForm.timeIn}:00+07:00`, isoEnd: `${dateOutVal}T${bookingForm.timeOut}:00+07:00`, 
       timestamp: new Date().toISOString(), youtubeLink: room.youtubeLink || ''
@@ -660,17 +721,66 @@ export default function App() {
   const handleSelectRoom = async (room) => {
     setSelectedBookingRoom(room);
     const code = generateBookingCode(); setPendingBookingCode(code);
-    if (currentUser) { setGuestInfo(currentUser); await createPendingDoc(code, currentUser, room); setBookingView('payment'); } 
+    if (currentUser) { setGuestInfo(currentUser); setBookingView('summary'); } 
     else { setGuestFormError(''); setBookingView('guest_info'); }
   };
 
-  const handleGuestSubmit = async (e) => {
+  const handleGuestSubmit = (e) => {
     e.preventDefault(); setGuestFormError(''); 
     const dobCheck = validateDobForm(guestInfo.dob);
     if(dobCheck !== "OK") return setGuestFormError(dobCheck);
     if(!validatePhoneForm(guestInfo.phone)) return setGuestFormError("SĐT không hợp lệ (10 số).");
     if (!guestInfo.cccdImage) return setGuestFormError("Vui lòng tải ảnh CCCD.");
-    await createPendingDoc(pendingBookingCode, guestInfo, selectedBookingRoom);
+    setBookingView('summary');
+  };
+
+  const handleApplyPromo = () => {
+    setPromoError('');
+    if(!promoInput.trim()) return;
+    const promo = promosDb.find(p => p.code === promoInput.trim().toUpperCase() && p.isActive);
+    
+    if(!promo) {
+       setPromoError('Mã khuyến mãi không tồn tại hoặc đã bị khóa.');
+       setAppliedPromo(null);
+       return;
+    }
+
+    if(promo.type === 'quantity') {
+       if(promo.used >= promo.limit) {
+           setPromoError('Mã khuyến mãi đã hết lượt sử dụng.');
+           setAppliedPromo(null); return;
+       }
+    } else if(promo.type === 'time') {
+       const now = new Date().getTime();
+       const start = new Date(`${promo.startDate}T00:00:00`).getTime();
+       const end = new Date(`${promo.endDate}T23:59:59`).getTime();
+       if(now < start || now > end) {
+           setPromoError('Mã khuyến mãi chưa tới thời gian áp dụng hoặc đã hết hạn.');
+           setAppliedPromo(null); return;
+       }
+    }
+
+    setAppliedPromo(promo);
+  };
+
+  const handleProceedToPayment = async () => {
+    let finalPrice = selectedBookingRoom.totalPrice;
+    
+    if (appliedPromo) {
+        if(appliedPromo.type === 'quantity') {
+           await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_promos', appliedPromo.id), { used: appliedPromo.used + 1 });
+        }
+        
+        let discount = 0;
+        if(appliedPromo.discountType === 'percent') {
+            discount = finalPrice * (appliedPromo.discountValue / 100);
+        } else {
+            discount = appliedPromo.discountValue;
+        }
+        finalPrice = Math.max(0, finalPrice - discount);
+    }
+
+    await createPendingDoc(pendingBookingCode, guestInfo, selectedBookingRoom, finalPrice, appliedPromo ? appliedPromo.code : null);
     setBookingView('payment');
   };
 
@@ -1070,10 +1180,49 @@ export default function App() {
                 </div>
                 {(() => {
                   let isHourlyDisabled = false;
-                  if (bookingForm.type === 'hourly' && bookingForm.timeIn) { const h = parseInt(bookingForm.timeIn.split(':')[0]); if (h >= 22 || h < 6) isHourlyDisabled = true; }
+                  let earlyWarningHours = 0;
+                  let lateWarningHours = 0;
+
+                  if (bookingForm.timeIn) { 
+                    const hIn = parseInt(bookingForm.timeIn.split(':')[0]); 
+                    const mIn = parseInt(bookingForm.timeIn.split(':')[1]);
+                    
+                    if (bookingForm.type === 'hourly') {
+                       if (hIn >= 22 || hIn < 6) isHourlyDisabled = true; 
+                    } else if (bookingForm.type === 'daily') {
+                       if (hIn >= 6 && hIn < 14) earlyWarningHours = Math.ceil(((14 * 60) - (hIn * 60 + mIn)) / 60);
+                    } else if (bookingForm.type === 'overnight') {
+                       if (hIn >= 6 && hIn < 22) earlyWarningHours = Math.ceil(((22 * 60) - (hIn * 60 + mIn)) / 60);
+                    }
+                  }
+
+                  if (bookingForm.timeOut && bookingForm.type !== 'hourly') {
+                    const hOut = parseInt(bookingForm.timeOut.split(':')[0]);
+                    const mOut = parseInt(bookingForm.timeOut.split(':')[1]);
+
+                    if (bookingForm.type === 'daily') {
+                       if (hOut > 12 || (hOut === 12 && mOut > 0)) lateWarningHours = Math.ceil(((hOut * 60 + mOut) - (12 * 60)) / 60);
+                    } else if (bookingForm.type === 'overnight') {
+                       if (hOut > 10 || (hOut === 10 && mOut > 0)) lateWarningHours = Math.ceil(((hOut * 60 + mOut) - (10 * 60)) / 60);
+                    }
+                  }
+
                   return (
                     <>
                       {isHourlyDisabled && <p className="text-red-400 text-[10px] text-center italic uppercase tracking-widest">* Sau 22h, vui lòng chọn gói Qua đêm.</p>}
+                      
+                      {/* --- CẢNH BÁO PHỤ THU SỚM / TRỄ --- */}
+                      {(earlyWarningHours > 0 || lateWarningHours > 0) && (
+                        <div className="bg-red-500/10 border border-red-500/30 p-3.5 rounded-xl flex items-start gap-3">
+                          <AlertTriangle size={16} className="text-red-400 shrink-0 mt-0.5" />
+                          <div className="text-[10px] text-red-300 uppercase tracking-widest leading-relaxed">
+                            {earlyWarningHours > 0 && <div>* Bạn đang chọn nhận phòng sớm <strong className="text-red-400">{earlyWarningHours} tiếng</strong> so với giờ quy định.</div>}
+                            {lateWarningHours > 0 && <div>* Bạn đang chọn trả phòng trễ <strong className="text-red-400">{lateWarningHours} tiếng</strong> so với giờ quy định.</div>}
+                            <div className="mt-1.5 font-bold text-white opacity-90">Hệ thống sẽ tự động tính thêm phụ phí vào Bảng tổng hợp thanh toán.</div>
+                          </div>
+                        </div>
+                      )}
+
                       <button disabled={isHourlyDisabled} type="submit" className={`w-full font-bold py-4 rounded-xl text-xs uppercase tracking-[0.2em] shadow-[0_0_15px_rgba(212,255,0,0.2)] transition-colors ${isHourlyDisabled?'bg-zinc-800 text-zinc-500':'bg-[#D4FF00] text-black hover:bg-white'}`}>Tìm Phòng Trống</button>
                     </>
                   );
@@ -1106,7 +1255,7 @@ export default function App() {
                 <div className="space-y-4">
                   <input required placeholder="Tên người nhận phòng" value={guestInfo.name} onChange={e=>setGuestInfo({...guestInfo, name: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-[#D4FF00] text-sm text-white"/>
                   <div className="grid grid-cols-2 gap-4">
-                    <input readOnly placeholder="Ngày sinh (AI quét)" value={guestInfo.dob} className="bg-black/40 border border-white/10 p-3 rounded-xl text-sm text-zinc-500 cursor-not-allowed outline-none"/>
+                    <input readOnly={!isDobUnlocked} placeholder={isDobUnlocked ? "Nhập ngày sinh (DD/MM/YYYY)" : "Ngày sinh (AI quét)"} value={guestInfo.dob} onChange={e=>setGuestInfo({...guestInfo, dob: formatDobInput(e.target.value)})} className={`border border-white/10 p-3 rounded-xl text-sm outline-none focus:border-[#D4FF00] transition-colors ${!isDobUnlocked ? 'bg-black/40 text-zinc-500 cursor-not-allowed' : 'bg-white/5 text-white cursor-text'}`}/>
                     <input required type="tel" placeholder="Số điện thoại" value={guestInfo.phone} onChange={e=>setGuestInfo({...guestInfo, phone: e.target.value.replace(/\D/g, '')})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-[#D4FF00] text-sm text-white"/>
                   </div>
                   <div className="pt-2">
@@ -1117,8 +1266,108 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <button type="submit" disabled={isCheckingCCCD} className="w-full bg-[#D4FF00] text-black font-bold py-4 rounded-xl text-xs uppercase tracking-widest disabled:bg-zinc-800 disabled:text-zinc-600 transition-colors shadow-[0_0_15px_rgba(212,255,0,0.2)]">Tiếp tục thanh toán</button>
+                <button type="submit" disabled={isCheckingCCCD} className="w-full bg-[#D4FF00] text-black font-bold py-4 rounded-xl text-xs uppercase tracking-widest disabled:bg-zinc-800 disabled:text-zinc-600 transition-colors shadow-[0_0_15px_rgba(212,255,0,0.2)]">Bước tiếp theo</button>
               </form>
+            )}
+
+            {bookingView === 'summary' && selectedBookingRoom && (
+              <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4 shrink-0">
+                  <button onClick={() => setBookingView('guest_info')} className="text-zinc-400 hover:text-[#D4FF00] transition-colors p-1"><ArrowLeft size={20}/></button>
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-white tracking-widest leading-none mb-1">Xác nhận thông tin</h3>
+                    <p className="text-xs font-medium text-zinc-300 tracking-wide">Kiểm tra thông tin trước khi thanh toán</p>
+                  </div>
+                </div>
+
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6 text-sm">
+                   <div className="mb-4 pb-4 border-b border-white/5 space-y-2">
+                      <div className="flex justify-between"><span className="text-zinc-400">Khách hàng:</span><strong className="text-white uppercase">{guestInfo.name}</strong></div>
+                      <div className="flex justify-between"><span className="text-zinc-400">Điện thoại:</span><strong className="text-white">{guestInfo.phone}</strong></div>
+                      <div className="flex justify-between"><span className="text-zinc-400">Hạng phòng:</span><strong className="text-[#D4FF00]">{selectedBookingRoom.categoryName}</strong></div>
+                      <div className="flex justify-between"><span className="text-zinc-400">Tên phòng:</span><strong className="text-white">{selectedBookingRoom.name}</strong></div>
+                   </div>
+
+                   <div className="mb-4 pb-4 border-b border-white/5 space-y-2">
+                      {bookingForm.type === 'hourly' ? (
+                        <>
+                           <div className="flex justify-between"><span className="text-zinc-400">Gói đặt:</span><strong className="text-white uppercase text-xs bg-white/10 px-2 py-0.5 rounded">Theo giờ</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Ngày:</span><strong className="text-white">{bookingForm.dateIn}</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Thời gian:</span><strong className="text-white">{bookingForm.timeIn} ➝ {bookingForm.timeOut}</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Tổng thời gian:</span><strong className="text-[#D4FF00]">{selectedBookingRoom.breakdown.exactHours} giờ {selectedBookingRoom.breakdown.exactMins > 0 ? '30 phút' : ''}</strong></div>
+                           <div className="flex justify-between pt-2"><span className="text-zinc-400">Tiền phòng cơ bản:</span><strong className="text-white font-mono">{formatPrice(selectedBookingRoom.breakdown.basePrice)}</strong></div>
+                           {selectedBookingRoom.breakdown.holidayFee > 0 && (
+                             <div className="flex justify-between"><span className="text-zinc-400">Phụ thu lễ:</span><strong className="text-orange-400 font-mono">+ {formatPrice(selectedBookingRoom.breakdown.holidayFee)}</strong></div>
+                           )}
+                        </>
+                      ) : (
+                        <>
+                           <div className="flex justify-between"><span className="text-zinc-400">Gói đặt:</span><strong className="text-white uppercase text-xs bg-white/10 px-2 py-0.5 rounded">{bookingForm.type === 'daily' ? 'Theo Ngày' : 'Qua đêm'}</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Ngày Check-in:</span><strong className="text-white">{bookingForm.timeIn} | {bookingForm.dateIn}</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Ngày Check-out:</span><strong className="text-white">{bookingForm.timeOut} | {bookingForm.dateOut}</strong></div>
+                           <div className="flex justify-between"><span className="text-zinc-400">Số lượng:</span><strong className="text-[#D4FF00]">{selectedBookingRoom.breakdown.diffDays} {bookingForm.type === 'daily' ? 'Ngày' : 'Đêm'}</strong></div>
+                           <div className="flex justify-between pt-2"><span className="text-zinc-400">Tiền phòng cơ bản:</span><strong className="text-white font-mono">{formatPrice(selectedBookingRoom.breakdown.basePrice)}</strong></div>
+                           
+                           {selectedBookingRoom.breakdown.earlyHours > 0 ? (
+                             <div className="flex justify-between items-start text-[11px]"><span className="text-zinc-400">Check-in sớm ({selectedBookingRoom.breakdown.earlyHours} tiếng):<br/><span className="italic text-[9px]">{selectedBookingRoom.breakdown.earlyHours} x {formatPrice(Number(selectedBookingRoom.breakdown.earlyRate))}</span></span><strong className="text-orange-400 font-mono">+ {formatPrice(selectedBookingRoom.breakdown.earlyFee)}</strong></div>
+                           ) : (
+                             <div className="flex justify-between text-[11px]"><span className="text-zinc-500">Check-in sớm:</span><strong className="text-zinc-500 font-mono">0đ</strong></div>
+                           )}
+
+                           {selectedBookingRoom.breakdown.lateHours > 0 ? (
+                             <div className="flex justify-between items-start text-[11px]"><span className="text-zinc-400">Check-out trễ ({selectedBookingRoom.breakdown.lateHours} tiếng):<br/><span className="italic text-[9px]">{selectedBookingRoom.breakdown.lateHours} x {formatPrice(Number(selectedBookingRoom.breakdown.lateRate))}</span></span><strong className="text-orange-400 font-mono">+ {formatPrice(selectedBookingRoom.breakdown.lateFee)}</strong></div>
+                           ) : (
+                             <div className="flex justify-between text-[11px]"><span className="text-zinc-500">Check-out trễ:</span><strong className="text-zinc-500 font-mono">0đ</strong></div>
+                           )}
+
+                           {selectedBookingRoom.breakdown.holidayFee > 0 && (
+                             <div className="flex justify-between"><span className="text-zinc-400">Phụ thu lễ:</span><strong className="text-orange-400 font-mono">+ {formatPrice(selectedBookingRoom.breakdown.holidayFee)}</strong></div>
+                           )}
+                        </>
+                      )}
+                   </div>
+
+                   {/* MÃ KHUYẾN MÃI */}
+                   <div className="mb-4">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Tag size={12}/> Áp dụng mã khuyến mãi</label>
+                      <div className="flex gap-2">
+                        <input type="text" value={promoInput} onChange={e=>setPromoInput(e.target.value.toUpperCase())} placeholder="Nhập mã (nếu có)" className="flex-1 bg-black border border-white/20 rounded-lg px-3 py-2 text-sm text-white font-mono uppercase outline-none focus:border-[#D4FF00]"/>
+                        <button type="button" onClick={handleApplyPromo} className="bg-white/10 hover:bg-[#D4FF00] hover:text-black text-white font-bold text-[10px] uppercase tracking-widest px-4 rounded-lg transition-colors">Áp dụng</button>
+                      </div>
+                      {promoError && <p className="text-red-400 text-[10px] mt-2 italic">{promoError}</p>}
+                      {appliedPromo && (
+                        <div className="mt-3 p-3 bg-[#D4FF00]/10 border border-[#D4FF00]/30 rounded-lg flex justify-between items-center">
+                           <div>
+                             <span className="text-[10px] text-[#D4FF00] font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle size={12}/> Mã: {appliedPromo.code}</span>
+                             <span className="text-[10px] text-zinc-300">Giảm {appliedPromo.discountType === 'percent' ? `${appliedPromo.discountValue}%` : formatPrice(Number(appliedPromo.discountValue))}</span>
+                           </div>
+                           <button onClick={()=>setAppliedPromo(null)} className="text-xs text-zinc-500 hover:text-white"><X size={14}/></button>
+                        </div>
+                      )}
+                   </div>
+
+                   <div className="flex justify-between items-end pt-2 mt-auto">
+                     <span className="text-xs font-bold text-white uppercase tracking-widest">Tổng Cần Thanh Toán:</span>
+                     <div className="text-right">
+                       {appliedPromo && (
+                         <span className="block text-xs text-zinc-500 line-through mb-1">{formatPrice(selectedBookingRoom.totalPrice)}</span>
+                       )}
+                       <strong className="text-2xl font-serif italic text-[#D4FF00]">
+                         {(() => {
+                            let f = selectedBookingRoom.totalPrice;
+                            if (appliedPromo) {
+                               let d = appliedPromo.discountType === 'percent' ? f * (appliedPromo.discountValue/100) : Number(appliedPromo.discountValue);
+                               f = Math.max(0, f - d);
+                            }
+                            return formatPrice(f);
+                         })()}
+                       </strong>
+                     </div>
+                   </div>
+                </div>
+
+                <button type="button" onClick={handleProceedToPayment} className="w-full bg-[#D4FF00] text-black font-bold py-4 rounded-xl text-xs uppercase tracking-widest transition-colors shadow-[0_0_15px_rgba(212,255,0,0.2)] hover:bg-white mt-auto">Tiếp tục thanh toán</button>
+              </div>
             )}
 
             {bookingView === 'payment' && (
@@ -1201,7 +1450,7 @@ export default function App() {
                     <input required placeholder="Tạo Tên đăng nhập" value={registerForm.username} onChange={e=>setRegisterForm({...registerForm, username: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-[#D4FF00] text-sm text-white"/>
                     <input required type="password" placeholder="Tạo Mật khẩu" value={registerForm.password} onChange={e=>setRegisterForm({...registerForm, password: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-[#D4FF00] text-sm text-white"/>
                     <div className="grid grid-cols-2 gap-4">
-                      <input readOnly placeholder="Ngày sinh (AI quét)" value={registerForm.dob} className="bg-black/40 border border-white/10 p-3 rounded-xl text-sm text-zinc-500 cursor-not-allowed outline-none"/>
+                      <input readOnly={!isDobUnlocked} placeholder={isDobUnlocked ? "Nhập ngày sinh (DD/MM/YYYY)" : "Ngày sinh (AI quét)"} value={registerForm.dob} onChange={e=>setRegisterForm({...registerForm, dob: formatDobInput(e.target.value)})} className={`border border-white/10 p-3 rounded-xl text-sm outline-none focus:border-[#D4FF00] transition-colors ${!isDobUnlocked ? 'bg-black/40 text-zinc-500 cursor-not-allowed' : 'bg-white/5 text-white cursor-text'}`}/>
                       <input required type="tel" placeholder="Số điện thoại" value={registerForm.phone} onChange={e=>setRegisterForm({...registerForm, phone: e.target.value.replace(/\D/g, '')})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none focus:border-[#D4FF00] text-sm text-white"/>
                     </div>
                     <div className="pt-2">
@@ -1273,7 +1522,7 @@ export default function App() {
         </div>
       )}
 
-      {/* --- FOOD MENU (ĐÃ KHÔI PHỤC BỘ LỌC DROPDOWN) --- */}
+      {/* --- FOOD MENU --- */}
       {isFoodMenuOpen && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={()=>setIsFoodMenuOpen(false)}></div>
@@ -1385,7 +1634,7 @@ export default function App() {
              </div>
              <h4 className="text-3xl font-serif italic text-white mb-4">{formatPrice(cartTotalPrice)}</h4>
              <p className="text-xs text-zinc-400 font-light mb-6 px-4 leading-relaxed">Mở App ngân hàng quét mã QR để thanh toán tiền đồ ăn cho phòng <strong className="text-white">{selectedFoodRoom}</strong>.</p>
-             <p className="text-[10px] font-bold text-[#D4FF00] mb-2 uppercase tracking-widest animate-pulse flex items-center gap-2"><Clock size={14}/> Hệ thống đang chờ...</p>
+             <p className="text-[10px] font-bold text-[#D4FF00] mb-2 uppercase tracking-widest animate-pulse flex items-center gap-2"><Clock size={14}/> Hệ thống đang chờ ngân hàng xử lý...</p>
           </div>
         </div>
       )}
@@ -1442,6 +1691,79 @@ export default function App() {
                   <button onClick={()=>setAdminView('rooms')} className="group p-8 md:p-10 bg-white/5 border border-white/10 rounded-3xl hover:border-[#D4FF00]/50 hover:bg-white/[0.08] transition-all flex flex-col items-center gap-6"><BedDouble size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] transition-colors"/><span className="font-black uppercase text-sm text-white tracking-widest group-hover:text-[#D4FF00] transition-colors">Quản lý Phòng</span></button>
                   <button onClick={()=>setAdminView('menu')} className="group p-8 md:p-10 bg-white/5 border border-white/10 rounded-3xl hover:border-[#D4FF00]/50 hover:bg-white/[0.08] transition-all flex flex-col items-center gap-6"><UtensilsCrossed size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] transition-colors"/><span className="font-black uppercase text-sm text-white tracking-widest group-hover:text-[#D4FF00] transition-colors">Thực đơn đồ ăn</span></button>
                   <button onClick={()=>setAdminView('surcharge')} className="group p-8 md:p-10 bg-white/5 border border-white/10 rounded-3xl hover:border-[#D4FF00]/50 hover:bg-white/[0.08] transition-all flex flex-col items-center gap-6"><Sparkles size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] transition-colors"/><span className="font-black uppercase text-sm text-white tracking-widest group-hover:text-[#D4FF00] transition-colors">Phụ thu lễ</span></button>
+                  <button onClick={()=>setAdminView('promos')} className="group p-8 md:p-10 bg-white/5 border border-white/10 rounded-3xl hover:border-[#D4FF00]/50 hover:bg-white/[0.08] transition-all flex flex-col items-center gap-6"><Ticket size={48} strokeWidth={1} className="text-zinc-500 group-hover:text-[#D4FF00] transition-colors"/><span className="font-black uppercase text-sm text-white tracking-widest group-hover:text-[#D4FF00] transition-colors">Mã Khuyến Mãi</span></button>
+                </div>
+              </div>
+            )}
+
+            {adminView === 'promos' && (
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                <div className="w-full md:w-1/3 p-6 border-r border-white/10 bg-black/20 overflow-y-auto custom-scrollbar">
+                  <h5 className="font-bold text-[#D4FF00] uppercase text-xs mb-6 tracking-widest flex items-center gap-2"><Tag size={16}/> Cấp Mã Khuyến Mãi</h5>
+                  <form onSubmit={async (e) => {
+                     e.preventDefault();
+                     const id = 'promo_' + Date.now();
+                     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_promos', id), {
+                        id, code: promoForm.code.toUpperCase(), type: promoForm.type, discountType: promoForm.discountType, discountValue: Number(promoForm.discountValue),
+                        limit: Number(promoForm.limit), used: 0, startDate: promoForm.startDate, endDate: promoForm.endDate, isActive: true
+                     });
+                     showAlert('Đã tạo mã khuyến mãi!');
+                     setPromoForm({ code: '', type: 'quantity', discountType: 'fixed', discountValue: '', limit: '', startDate: '', endDate: '' });
+                  }} className="space-y-4">
+                     <div>
+                       <label className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-2">Loại khuyến mãi</label>
+                       <div className="flex gap-2">
+                         <button type="button" onClick={()=>setPromoForm({...promoForm, type:'quantity'})} className={`flex-1 py-2 rounded-lg border text-[10px] font-bold uppercase transition-colors ${promoForm.type==='quantity'?'border-[#D4FF00] bg-[#D4FF00]/10 text-[#D4FF00]':'border-white/20 text-zinc-500'}`}>Theo Số Lượng</button>
+                         <button type="button" onClick={()=>setPromoForm({...promoForm, type:'time'})} className={`flex-1 py-2 rounded-lg border text-[10px] font-bold uppercase transition-colors ${promoForm.type==='time'?'border-[#D4FF00] bg-[#D4FF00]/10 text-[#D4FF00]':'border-white/20 text-zinc-500'}`}>Theo Thời Gian</button>
+                       </div>
+                     </div>
+
+                     <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Mã Code (VD: SUMMER24)</label><input required placeholder="Nhập mã code" value={promoForm.code} onChange={e=>setPromoForm({...promoForm, code: e.target.value.toUpperCase()})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm text-white font-mono uppercase outline-none focus:border-[#D4FF00]"/></div>
+
+                     <div className="grid grid-cols-2 gap-3">
+                       <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Giảm theo</label><select value={promoForm.discountType} onChange={e=>setPromoForm({...promoForm, discountType: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-xs text-white outline-none"><option value="fixed" className="bg-zinc-900">VNĐ (Trừ tiền)</option><option value="percent" className="bg-zinc-900">% Phần trăm</option></select></div>
+                       <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Mức giảm</label><input required type="number" placeholder="50000" value={promoForm.discountValue} onChange={e=>setPromoForm({...promoForm, discountValue: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-xs text-white outline-none focus:border-[#D4FF00]"/></div>
+                     </div>
+
+                     {promoForm.type === 'quantity' ? (
+                       <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Số lượng mã tối đa</label><input required type="number" placeholder="100" value={promoForm.limit} onChange={e=>setPromoForm({...promoForm, limit: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm text-white outline-none focus:border-[#D4FF00]"/></div>
+                     ) : (
+                       <div className="grid grid-cols-2 gap-3">
+                         <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Từ ngày</label><input required type="date" value={promoForm.startDate} onChange={e=>setPromoForm({...promoForm, startDate: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-xs text-white [color-scheme:dark] outline-none"/></div>
+                         <div><label className="text-[10px] text-zinc-500 uppercase tracking-widest mb-1 block">Đến hết ngày</label><input required type="date" value={promoForm.endDate} onChange={e=>setPromoForm({...promoForm, endDate: e.target.value})} className="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-xs text-white [color-scheme:dark] outline-none"/></div>
+                       </div>
+                     )}
+
+                     <button type="submit" className="w-full bg-[#D4FF00] text-black font-bold py-3.5 mt-2 rounded-xl text-xs uppercase tracking-widest hover:bg-white transition-colors">Tạo Mã Code</button>
+                  </form>
+                </div>
+                <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
+                   <div className="flex justify-between items-end mb-6 border-b border-white/10 pb-4"><h4 className="text-sm font-bold text-white uppercase tracking-widest">Danh sách Mã đang hoạt động</h4></div>
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                     {promosDb.map(p => (
+                       <div key={p.id} className={`p-4 border rounded-2xl flex flex-col justify-between relative overflow-hidden ${p.isActive ? 'bg-white/5 border-white/10' : 'bg-black/50 border-red-500/20'}`}>
+                         {!p.isActive && <div className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold px-2 py-1 uppercase rounded-bl-lg">Đã Khóa</div>}
+                         <div className="mb-3">
+                           <div className="flex items-center gap-2 mb-1"><Tag size={14} className="text-[#D4FF00]"/><h6 className="font-bold font-mono text-lg text-white tracking-widest">{p.code}</h6></div>
+                           <p className="text-xs text-[#D4FF00] font-bold">Giảm: {p.discountType === 'percent' ? `${p.discountValue}%` : formatPrice(p.discountValue)}</p>
+                         </div>
+                         <div className="flex justify-between items-end">
+                           <div className="text-[10px] text-zinc-400 space-y-0.5">
+                             {p.type === 'quantity' ? (
+                               <><p className="uppercase">Loại: <span className="text-white">Số lượng</span></p><p>Đã dùng: <strong className="text-white">{p.used}/{p.limit}</strong></p></>
+                             ) : (
+                               <><p className="uppercase">Loại: <span className="text-white">Thời gian</span></p><p>Hạn: <strong className="text-white">{p.startDate} - {p.endDate}</strong></p></>
+                             )}
+                           </div>
+                           <div className="flex gap-2">
+                             <button onClick={async () => await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_promos', p.id), { isActive: !p.isActive })} className="text-[9px] font-bold px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors">{p.isActive ? 'Khóa mã' : 'Mở lại'}</button>
+                             <button onClick={()=>{ showConfirm(`Xóa mã ${p.code}?`, async () => await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'madlad_promos', p.id))); }} className="text-[9px] font-bold text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-colors">XÓA</button>
+                           </div>
+                         </div>
+                       </div>
+                     ))}
+                     {promosDb.length === 0 && <div className="col-span-full text-center py-20 text-zinc-600 italic text-sm">Chưa có mã khuyến mãi nào.</div>}
+                   </div>
                 </div>
               </div>
             )}
@@ -1722,7 +2044,11 @@ export default function App() {
                   <div className="bg-white/5 p-3 rounded-lg border border-white/10"><span className="text-[9px] text-zinc-400 uppercase tracking-widest block mb-1">Check-in</span><strong className="text-lg text-white block leading-none mb-1">{viewingAdminBooking.timeIn}</strong><span className="text-[10px] text-zinc-500">{viewingAdminBooking.dateIn}</span></div>
                   <div className="bg-white/5 p-3 rounded-lg border border-white/10"><span className="text-[9px] text-zinc-400 uppercase tracking-widest block mb-1">Check-out</span><strong className="text-lg text-white block leading-none mb-1">{viewingAdminBooking.timeOut}</strong><span className="text-[10px] text-zinc-500">{viewingAdminBooking.dateOut}</span></div>
                 </div>
-                <div className="flex items-end justify-between border-b border-white/5 pb-4"><span className="text-[10px] text-zinc-500 uppercase tracking-widest block">Tổng TT:</span><strong className="text-2xl font-serif italic text-[#D4FF00] leading-none">{formatPrice(viewingAdminBooking.totalPrice)}</strong></div>
+                <div className="flex flex-col border-b border-white/5 pb-4 gap-2">
+                   <div className="flex justify-between items-end"><span className="text-[10px] text-zinc-500 uppercase tracking-widest block">Giá phòng:</span><span className="text-sm text-zinc-300 font-serif italic">{formatPrice(viewingAdminBooking.originalPrice || viewingAdminBooking.totalPrice)}</span></div>
+                   {viewingAdminBooking.promoCode && <div className="flex justify-between items-end"><span className="text-[10px] text-[#D4FF00] uppercase tracking-widest flex items-center gap-1"><CheckCircle size={10}/> Mã giảm giá ({viewingAdminBooking.promoCode}):</span><span className="text-sm text-[#D4FF00] font-serif italic line-through">{formatPrice((viewingAdminBooking.originalPrice || viewingAdminBooking.totalPrice) - viewingAdminBooking.totalPrice)}</span></div>}
+                   <div className="flex justify-between items-end mt-2 pt-2 border-t border-white/10"><span className="text-[10px] text-zinc-500 uppercase tracking-widest block">Tổng TT:</span><strong className="text-2xl font-serif italic text-[#D4FF00] leading-none">{formatPrice(viewingAdminBooking.totalPrice)}</strong></div>
+                </div>
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div><span className="text-[9px] text-zinc-500 uppercase tracking-widest block mb-1">Pass cửa:</span><strong className="text-xl font-mono text-white tracking-widest">{viewingAdminBooking.passcode}</strong></div>
                   <div><span className="text-[9px] text-zinc-500 uppercase tracking-widest block mb-1">Trạng thái:</span><span className={`inline-block text-[10px] px-3 py-1.5 rounded uppercase font-bold tracking-widest ${viewingAdminBooking.status === 'success' ? 'bg-[#D4FF00]/20 text-[#D4FF00] border border-[#D4FF00]/30' : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'}`}>{viewingAdminBooking.status === 'success' ? 'Thành công' : 'Chờ TT'}</span></div>
